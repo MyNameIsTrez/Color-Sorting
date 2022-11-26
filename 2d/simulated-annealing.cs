@@ -2,8 +2,8 @@
 // https://codegolf.stackexchange.com/a/22326
 // https://patrickwu.space/2016/06/12/csharp-color/#rgb2lab
 //
-// Compile and run: C:/Windows/Microsoft.NET/Framework/v4.0.30319/csc.exe /out:rainbow-smoke.exe rainbow-smoke.cs && ./rainbow-smoke.exe
-// Create mp4: ffmpeg -f image2 -i rainbow-smoke-output/rainbow-smoke-%d.png -c:v libx264 -pix_fmt yuv420p -vf scale=1024x1024:flags=neighbor -crf 1 palette.mp4
+// Compile and run: C:/Windows/Microsoft.NET/Framework/v4.0.30319/csc.exe /out:simulated-annealing.exe simulated-annealing.cs && ./simulated-annealing.exe
+// Create mp4: ffmpeg -f image2 -i simulated-annealing-output/simulated-annealing-%d.png -c:v libx264 -pix_fmt yuv420p -vf scale=1024x1024:flags=neighbor -crf 1 palette.mp4
 
 // TODO: Comment this out for performance boost
 // #define DEBUG
@@ -28,7 +28,8 @@ class Program
     const int HEIGHT = 16;
     const int STARTX = WIDTH/2;
     const int STARTY = HEIGHT/2;
-	const string OUTPUT_DIRECTORY_NAME = "rainbow-smoke-output";
+	const string OUTPUT_DIRECTORY_NAME = "simulated-annealing-output";
+	const double COOLING_RATE = 0.99999;
 
     // represent a coordinate
     struct XY
@@ -511,13 +512,13 @@ class Program
     }
 
     // calculates how well a color fits at the given coordinates
-    static int calcdiff(CIELab[,] pixels, XY xy, CIELab c)
+    static int calcdiff(List<CIELab> pixels, XY xy, CIELab c)
     {
         // get the diffs for each neighbor separately
         var diffs = new List<int>(8);
         foreach (var nxy in getneighbors(xy))
         {
-            var nc = pixels[nxy.y, nxy.x];
+            var nc = pixels[nxy.x + nxy.y * WIDTH];
             if (!nc.IsEmpty)
                 diffs.Add(coldiff(nc, c));
         }
@@ -529,7 +530,7 @@ class Program
             return diffs.Min();
     }
 
-	static int get_score(CIELab[,] pixels) // TODO: Maybe adding "ref" in front of "Bitmap" is an optimization?
+	static int get_score(List<CIELab> pixels) // TODO: Maybe adding "ref" in front of "Bitmap" is an optimization?
 	{
 		var score = 0;
 
@@ -540,7 +541,7 @@ class Program
 		{
 			for (var x = 0; x < WIDTH; x++)
 			{
-				score += calcdiff(pixels, new XY(x, y), pixels[y, x]);
+				score += calcdiff(pixels, new XY(x, y), pixels[x + y * WIDTH]);
 			}
 		}
 		return (score);
@@ -550,7 +551,7 @@ class Program
     {
 		var rnd = new Random();
 
-		var original_colors = new List<CIELab>();
+		var pixels = new List<CIELab>();
 		Bitmap palette = new Bitmap("palette.bmp");
 		for (int y = 0; y < palette.Height; y++)
 		{
@@ -558,59 +559,67 @@ class Program
 			{
 				Color pixel = palette.GetPixel(x,y);
 				CIELab lab = RGBtoLab(pixel.R, pixel.G, pixel.B);
-				original_colors.Add(lab);
+				pixels.Add(lab);
 			}
 		}
+
+		// pixels.Sort(new Comparison<CIELab>((c1, c2) => rnd.Next(3) - 1));
 
 		var loops = 0;
 		var lowest_score = int.MaxValue;
 		var imgs_saved = 0;
 		var starting_time = DateTime.Now.ToString("yyyy-MM-dd h-mm-ss tt");
+		double temperature = 0;
 		while (true)
 		{
-			List<CIELab> colors = new List<CIELab>(original_colors);
+			// TODO: Do this upon reheating maybe?
+			// List<CIELab> pixels = new List<CIELab>(original_pixels);
+			// pixels.Sort(new Comparison<CIELab>((c1, c2) => rnd.Next(3) - 1));
 
-			// randomization here changes which colors get picked first resulting in a butterfly effect
-			colors.Sort(new Comparison<CIELab>((c1, c2) => rnd.Next(3) - 1));
+			int index_1 = rnd.Next(WIDTH * HEIGHT);
+			int index_2;
+			do {
+				index_2 = rnd.Next(WIDTH * HEIGHT);
+			} while (index_1 == index_2);
 
-			// temporary place where we work (faster than all that many GetPixel calls)
-			var pixels = new CIELab[HEIGHT, WIDTH];
-			Trace.Assert(pixels.Length == colors.Count);
+			var old_index_1_pixel = pixels[index_1];
+			var old_index_2_pixel = pixels[index_2];
+			pixels[index_1] = old_index_2_pixel;
+			pixels[index_2] = old_index_1_pixel;
 
-			// constantly changing list of available coordinates (empty pixels which have non-empty neighbors)
-			var available = new HashSet<XY>();
+			// Console.WriteLine("{0}, {1}", index_1, index_2);
 
 			// loop through all colors that we want to place
-			for (var i = 0; i < colors.Count; i++)
-			{
-				XY bestxy;
-				if (available.Count == 0)
-				{
-					// use the starting point
-					bestxy = new XY(STARTX, STARTY);
-				}
-				else
-				{
-					// find the best place from the list of available coordinates
-					// uses parallel processing, this is the most expensive step
-					bestxy = available.AsParallel().OrderBy(xy => calcdiff(pixels, xy, colors[i])).First();
-				}
+			// for (var i = 0; i < colors.Count; i++)
+			// {
+			// 	XY bestxy;
+			// 	if (available.Count == 0)
+			// 	{
+			// 		// use the starting point
+			// 		bestxy = new XY(STARTX, STARTY);
+			// 	}
+			// 	else
+			// 	{
+			// 		// find the best place from the list of available coordinates
+			// 		// uses parallel processing, this is the most expensive step
+			// 		bestxy = available.AsParallel().OrderBy(xy => calcdiff(pixels, xy, colors[i])).First();
+			// 	}
 
-				// put the pixel where it belongs
-				Trace.Assert(pixels[bestxy.y, bestxy.x].IsEmpty);
+			// 	// put the pixel where it belongs
+			// 	Trace.Assert(pixels[bestxy.y, bestxy.x].IsEmpty);
 
-				pixels[bestxy.y, bestxy.x] = colors[i];
+			// 	pixels[bestxy.y, bestxy.x] = colors[i];
 
-				// adjust the available list
-				available.Remove(bestxy);
-				foreach (var nxy in getneighbors(bestxy))
-					if (pixels[nxy.y, nxy.x].IsEmpty)
-						available.Add(nxy);
-			}
-
-			Trace.Assert(available.Count == 0);
+			// 	// adjust the available list
+			// 	available.Remove(bestxy);
+			// 	foreach (var nxy in getneighbors(bestxy))
+			// 		if (pixels[nxy.y, nxy.x].IsEmpty)
+			// 			available.Add(nxy);
+			// }
 
 			var score = get_score(pixels);
+			Console.WriteLine("Score {0}", score);
+
 			if (score < lowest_score)
 			{
 				lowest_score = score;
@@ -620,7 +629,7 @@ class Program
 				{
 					for (var x = 0; x < WIDTH; x++)
 					{
-						CIELab lab = pixels[y, x];
+						CIELab lab = pixels[x + y * WIDTH];
 						RGB rgb = LabtoRGB(lab.L, lab.A, lab.B);
 
 						Color color = new Color();
@@ -635,9 +644,24 @@ class Program
 				Directory.CreateDirectory(String.Format("{0}/{1}", OUTPUT_DIRECTORY_NAME, starting_time));
 				img.Save(String.Format("{0}/{1}/{2}-score {3}-loop {4}.png", OUTPUT_DIRECTORY_NAME, starting_time, imgs_saved, score, loops));
 			}
+			else
+			{
+				if (rnd.NextDouble() > temperature)
+				{
+					// Console.WriteLine("Putting back");
+					pixels[index_1] = old_index_1_pixel;
+					pixels[index_2] = old_index_2_pixel;
+				}
+				else
+				{
+					// Console.WriteLine("Not putting back");
+				}
+			}
+
+			temperature *= COOLING_RATE;
 
 			loops++;
-			Console.WriteLine("Loop {0}, Lowest score {1}", loops, lowest_score);
+			Console.WriteLine("Loop {0}, Lowest score {1}, Temperature {2}", loops, lowest_score, temperature);
 		}
     }
 }
