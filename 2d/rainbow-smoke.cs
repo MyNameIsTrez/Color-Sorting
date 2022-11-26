@@ -1,6 +1,6 @@
 // TODO: Comment this out for performance boost
-#define DEBUG
-#define TRACE
+// #define DEBUG
+// #define TRACE
 
 using System;
 using System.Collections.Generic;
@@ -59,12 +59,20 @@ class Program
 		/// </summary>
 		public static readonly CIELab Empty = new CIELab();
 
-		public bool IsEmpty;
-
 		private double l;
 		private double a;
 		private double b;
 
+		// Replicating how Color works:
+		// https://referencesource.microsoft.com/#System.Drawing/commonui/System/Drawing/Color.cs,1433
+		private static short StateKnownColorValid = 0x0001;
+		// private readonly short state;
+		public readonly short state;
+		public bool IsEmpty {
+            get {
+                return state == 0;
+            }
+        }
 
 		public static bool operator ==(CIELab item1, CIELab item2)
 		{
@@ -135,7 +143,7 @@ class Program
 			this.l = l;
 			this.a = a;
 			this.b = b;
-			IsEmpty = false; // TODO: This may not be the right place to put this
+			this.state = StateKnownColorValid;
 		}
 
 		public override bool Equals(Object obj)
@@ -365,11 +373,11 @@ class Program
 	/// </summary>
 	public static CIELab XYZtoLab(double x, double y, double z)
 	{
-		CIELab lab = CIELab.Empty;
+		var L = 116.0 * Fxyz( y/CIEXYZ.D65.Y ) -16;
+		var A = 500.0 * (Fxyz( x/CIEXYZ.D65.X ) - Fxyz( y/CIEXYZ.D65.Y) );
+		var B = 200.0 * (Fxyz( y/CIEXYZ.D65.Y ) - Fxyz( z/CIEXYZ.D65.Z) );
 
-		lab.L = 116.0 * Fxyz( y/CIEXYZ.D65.Y ) -16;
-		lab.A = 500.0 * (Fxyz( x/CIEXYZ.D65.X ) - Fxyz( y/CIEXYZ.D65.Y) );
-		lab.B = 200.0 * (Fxyz( y/CIEXYZ.D65.Y ) - Fxyz( z/CIEXYZ.D65.Z) );
+		CIELab lab = new CIELab(L, A, B);
 
 		return lab;
 	}
@@ -566,9 +574,6 @@ class Program
 			var pixels = new CIELab[HEIGHT, WIDTH];
 			Trace.Assert(pixels.Length == colors.Count);
 
-			// Console.WriteLine("{0}", pixels[0, 0].IsEmpty);
-			// break ;
-
 			// constantly changing list of available coordinates (empty pixels which have non-empty neighbors)
 			var available = new HashSet<XY>();
 
@@ -589,9 +594,8 @@ class Program
 				}
 
 				// put the pixel where it belongs
-				Console.WriteLine("foo");
 				Trace.Assert(pixels[bestxy.y, bestxy.x].IsEmpty);
-				Console.WriteLine("bar");
+
 				pixels[bestxy.y, bestxy.x] = colors[i];
 
 				// adjust the available list
