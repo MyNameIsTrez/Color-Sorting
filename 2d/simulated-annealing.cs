@@ -3,7 +3,7 @@
 // https://patrickwu.space/2016/06/12/csharp-color/#rgb2lab
 //
 // Compile and run: C:/Windows/Microsoft.NET/Framework/v4.0.30319/csc.exe /out:simulated-annealing.exe simulated-annealing.cs && ./simulated-annealing.exe
-// Create mp4: ffmpeg -f image2 -i simulated-annealing-output/simulated-annealing-%d.png -c:v libx264 -pix_fmt yuv420p -vf scale=1024x1024:flags=neighbor -crf 1 palette.mp4
+// Create mp4: ffmpeg -f image2 -i simulated-annealing-output/%d.png -framerate 80 -c:v libx264 -pix_fmt yuv420p -vf scale=1024x1024:flags=neighbor -crf 1 palette.mp4
 
 // TODO: Comment this out for performance boost
 // #define DEBUG
@@ -483,16 +483,6 @@ class Program
         return (int)(l2 * l2 + a2 * a2 + b2 * b2);
     }
 
-	// https://stackoverflow.com/a/33782458/13279557
-	// public static int coldiff(Color e1, Color e2)
-	// {
-	// 	var rmean = (e1.R + e2.R) / 2;
-	// 	var r = e1.R - e2.R;
-	// 	var g = e1.G - e2.G;
-	// 	var b = e1.B - e2.B;
-	// 	return (int)Math.Sqrt((((512 + rmean) * r * r) >> 8) + 4 * g * g + (((767 - rmean) * b * b) >> 8));
-	// }
-
     // gets the neighbors (3..8) of the given coordinate
     static List<XY> getneighbors(XY xy)
     {
@@ -563,19 +553,14 @@ class Program
 			}
 		}
 
-		// pixels.Sort(new Comparison<CIELab>((c1, c2) => rnd.Next(3) - 1));
+		pixels.Sort(new Comparison<CIELab>((c1, c2) => rnd.Next(3) - 1));
 
 		var loops = 0;
 		var lowest_score = int.MaxValue;
 		var imgs_saved = 0;
-		var starting_time = DateTime.Now.ToString("yyyy-MM-dd h-mm-ss tt");
-		double temperature = 0;
+		var starting_time = DateTimeOffset.Now.ToUnixTimeSeconds();
 		while (true)
 		{
-			// TODO: Do this upon reheating maybe?
-			// List<CIELab> pixels = new List<CIELab>(original_pixels);
-			// pixels.Sort(new Comparison<CIELab>((c1, c2) => rnd.Next(3) - 1));
-
 			int index_1 = rnd.Next(WIDTH * HEIGHT);
 			int index_2;
 			do {
@@ -587,42 +572,12 @@ class Program
 			pixels[index_1] = old_index_2_pixel;
 			pixels[index_2] = old_index_1_pixel;
 
-			// Console.WriteLine("{0}, {1}", index_1, index_2);
-
-			// loop through all colors that we want to place
-			// for (var i = 0; i < colors.Count; i++)
-			// {
-			// 	XY bestxy;
-			// 	if (available.Count == 0)
-			// 	{
-			// 		// use the starting point
-			// 		bestxy = new XY(STARTX, STARTY);
-			// 	}
-			// 	else
-			// 	{
-			// 		// find the best place from the list of available coordinates
-			// 		// uses parallel processing, this is the most expensive step
-			// 		bestxy = available.AsParallel().OrderBy(xy => calcdiff(pixels, xy, colors[i])).First();
-			// 	}
-
-			// 	// put the pixel where it belongs
-			// 	Trace.Assert(pixels[bestxy.y, bestxy.x].IsEmpty);
-
-			// 	pixels[bestxy.y, bestxy.x] = colors[i];
-
-			// 	// adjust the available list
-			// 	available.Remove(bestxy);
-			// 	foreach (var nxy in getneighbors(bestxy))
-			// 		if (pixels[nxy.y, nxy.x].IsEmpty)
-			// 			available.Add(nxy);
-			// }
-
 			var score = get_score(pixels);
-			Console.WriteLine("Score {0}", score);
 
 			if (score < lowest_score)
 			{
 				lowest_score = score;
+				Console.WriteLine("Score {0}, Image {1}, Loop {2}, Seconds {3}", score, imgs_saved, loops, DateTimeOffset.Now.ToUnixTimeSeconds() - starting_time);
 
 				var img = new Bitmap(WIDTH, HEIGHT, PixelFormat.Format24bppRgb);
 				for (var y = 0; y < HEIGHT; y++)
@@ -641,27 +596,15 @@ class Program
 
 				imgs_saved++;
 
-				Directory.CreateDirectory(String.Format("{0}/{1}", OUTPUT_DIRECTORY_NAME, starting_time));
-				img.Save(String.Format("{0}/{1}/{2}-score {3}-loop {4}.png", OUTPUT_DIRECTORY_NAME, starting_time, imgs_saved, score, loops));
+				img.Save(String.Format("{0}/{1}.png", OUTPUT_DIRECTORY_NAME, imgs_saved));
 			}
 			else
 			{
-				if (rnd.NextDouble() > temperature)
-				{
-					// Console.WriteLine("Putting back");
-					pixels[index_1] = old_index_1_pixel;
-					pixels[index_2] = old_index_2_pixel;
-				}
-				else
-				{
-					// Console.WriteLine("Not putting back");
-				}
+				pixels[index_1] = old_index_1_pixel;
+				pixels[index_2] = old_index_2_pixel;
 			}
 
-			temperature *= COOLING_RATE;
-
 			loops++;
-			Console.WriteLine("Loop {0}, Lowest score {1}, Temperature {2}", loops, lowest_score, temperature);
 		}
     }
 }
