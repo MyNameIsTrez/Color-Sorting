@@ -2,8 +2,8 @@
 // https://codegolf.stackexchange.com/a/22326
 // https://patrickwu.space/2016/06/12/csharp-color/#rgb2lab
 //
-// Compile and run: C:/Windows/Microsoft.NET/Framework/v4.0.30319/csc.exe /out:simulated-annealing.exe simulated-annealing.cs && ./simulated-annealing.exe
-// Create mp4: ffmpeg -f image2 -i simulated-annealing-output/%d.png -framerate 80 -c:v libx264 -pix_fmt yuv420p -vf scale=1024x1024:flags=neighbor -crf 1 palette.mp4
+// Compile and run: C:/Windows/Microsoft.NET/Framework/v4.0.30319/csc.exe /out:swap.exe swap.cs && ./swap.exe
+// Create mp4: ffmpeg -f image2 -i swap-output/%d.png -framerate 80 -c:v libx264 -pix_fmt yuv420p -vf scale=1024x1024:flags=neighbor -crf 1 palette.mp4
 
 // TODO: Comment this out for performance boost
 // #define DEBUG
@@ -28,7 +28,7 @@ class Program
     const int HEIGHT = 16;
     const int STARTX = WIDTH/2;
     const int STARTY = HEIGHT/2;
-	const string OUTPUT_DIRECTORY_NAME = "simulated-annealing-output";
+	const string OUTPUT_DIRECTORY_NAME = "swap-output";
 	const double COOLING_RATE = 0.99999;
 
     // represent a coordinate
