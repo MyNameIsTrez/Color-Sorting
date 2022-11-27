@@ -484,8 +484,10 @@ class Program
     }
 
     // gets the neighbors (3..8) of the given coordinate
-    static List<XY> getneighbors(XY xy)
+    static List<XY> getneighbors(int index)
     {
+		XY xy = new XY(index % WIDTH, (int)(index / WIDTH));
+
         var ret = new List<XY>(8);
         for (var dy = -1; dy <= 1; dy++)
         {
@@ -493,7 +495,7 @@ class Program
                 continue;
             for (var dx = -1; dx <= 1; dx++)
             {
-                if (xy.x + dx == -1 || xy.x + dx == WIDTH)
+                if (xy.x + dx == -1 || xy.x + dx == WIDTH || (xy.x + dx == 0 && xy.y + dy == 0))
                     continue;
                 ret.Add(new XY(xy.x + dx, xy.y + dy));
             }
@@ -502,11 +504,12 @@ class Program
     }
 
     // calculates how well a color fits at the given coordinates
-    static int calcdiff(List<CIELab> pixels, XY xy, CIELab c)
+    static int get_score(List<CIELab> pixels, int index)
     {
+		CIELab c = pixels[index];
         // get the diffs for each neighbor separately
         var diffs = new List<int>(8);
-        foreach (var nxy in getneighbors(xy))
+        foreach (var nxy in getneighbors(index))
         {
             var nc = pixels[nxy.x + nxy.y * WIDTH];
             if (!nc.IsEmpty)
@@ -520,18 +523,52 @@ class Program
             return diffs.Min();
     }
 
-	static int get_score(List<CIELab> pixels) // TODO: Maybe adding "ref" in front of "Bitmap" is an optimization?
+	// TODO: Maybe adding "ref" in front of List<CIELab> is an optimization?
+	static int get_total_score(List<CIELab> pixels)
 	{
 		var score = 0;
-
-		// TODO: Use something like this as an optimization
-		// bestxy = available.AsParallel().OrderBy(xy => calcdiff(pixels, xy, colors[i])).First();
-
 		for (var y = 0; y < HEIGHT; y++)
-		{
 			for (var x = 0; x < WIDTH; x++)
+				score += get_score(pixels, x + y * WIDTH);
+		return (score);
+	}
+
+	// /* A simplified explanation of this function:
+
+	// pixels:
+	// [4, 3, 5]
+	// [9, 5, 6]
+	// [4, 2, 9]
+
+	// index_from: 4
+	// index_to  : 8
+
+	// old score of index_to: ( (5-9)**2 + (6-9)**2 + (2-9)**2 ) / 3 -> 24.66 -> 24
+
+	// new score of index_to: ( (9-5)**2 + (6-5)**2 + (2-5)**2 ) / 3 -> 8.66 -> 8
+
+	// */
+	// // TODO: Maybe adding "ref" in front of List<CIELab> is an optimization?
+	// static int get_score(List<CIELab> pixels, int index_from, int index_to)
+	// {
+	// 	var score_diff = 0;
+	// 	// score_diff += get_score(pixels, ); // TODO: Write
+	// 	return (score_diff);
+	// }
+
+	static int get_self_plus_neighbor_score(List<CIELab> pixels, int index)
+	{
+		var score = 0;
+		var xy = new XY(index % WIDTH, (int)(index / WIDTH));
+		for (var dy = -1; dy <= 1; dy++)
+		{
+			if (xy.y + dy == -1 || xy.y + dy == HEIGHT)
+				continue;
+			for (var dx = -1; dx <= 1; dx++)
 			{
-				score += calcdiff(pixels, new XY(x, y), pixels[x + y * WIDTH]);
+				if (xy.x + dx == -1 || xy.x + dx == WIDTH)
+					continue;
+				score += get_score(pixels, xy.x + dx + (xy.y + dy) * WIDTH);
 			}
 		}
 		return (score);
@@ -553,26 +590,58 @@ class Program
 			}
 		}
 
-		pixels.Sort(new Comparison<CIELab>((c1, c2) => rnd.Next(3) - 1));
+		// TODO: RESTORE!!!!!!!!!!
+		// pixels.Sort(new Comparison<CIELab>((c1, c2) => rnd.Next(3) - 1));
 
 		var loops = 0;
 		var lowest_score = int.MaxValue;
 		var imgs_saved = 0;
 		var starting_time = DateTimeOffset.Now.ToUnixTimeSeconds();
+		var score = get_total_score(pixels);
+
 		while (true)
 		{
-			int index_1 = rnd.Next(WIDTH * HEIGHT);
-			int index_2;
-			do {
-				index_2 = rnd.Next(WIDTH * HEIGHT);
-			} while (index_1 == index_2);
+			int index_1 = 0;
+			int index_2 = 3;
+
+			// TODO: RESTORE!!!!!!!!!!
+			// int index_1 = rnd.Next(WIDTH * HEIGHT);
+			// int index_2;
+			// do {
+			// 	index_2 = rnd.Next(WIDTH * HEIGHT);
+			// } while (index_1 == index_2);
+
+			var old_1 = get_self_plus_neighbor_score(pixels, index_1);
+
+			// score -= get_self_plus_neighbor_score(pixels, index_1);
+			// score -= get_self_plus_neighbor_score(pixels, index_2);
 
 			var old_index_1_pixel = pixels[index_1];
 			var old_index_2_pixel = pixels[index_2];
-			pixels[index_1] = old_index_2_pixel;
-			pixels[index_2] = old_index_1_pixel;
 
-			var score = get_score(pixels);
+			pixels[index_1] = old_index_2_pixel;
+			var new_1 = get_self_plus_neighbor_score(pixels, index_1);
+
+			var old_2 = get_self_plus_neighbor_score(pixels, index_2);
+			pixels[index_2] = old_index_1_pixel;
+			var new_2 = get_self_plus_neighbor_score(pixels, index_2);
+
+			// score = get_total_score(pixels);
+			// score = score - old_1 - old_2 + new_1 + new_2;
+
+			// score += get_self_plus_neighbor_score(pixels, index_1);
+			// score += get_self_plus_neighbor_score(pixels, index_2);
+
+			Console.WriteLine("old real total score {0}", score);
+			Console.WriteLine("old 1 {0}", old_1);
+			Console.WriteLine("new 1 {0}", new_1);
+			Console.WriteLine("old 2 {0}", old_2);
+			Console.WriteLine("new 2 {0}", new_2);
+			// Console.WriteLine("predicted new total score {0}", score - old_1 + new_1);
+			// Console.WriteLine("predicted new total score {0}", score - old_2 + new_2);
+			Console.WriteLine("predicted new total score {0}", score - old_1 - old_2 + new_1 + new_2);
+			Console.WriteLine("new real total score {0}", get_total_score(pixels));
+			return ;
 
 			if (score < lowest_score)
 			{
@@ -597,6 +666,8 @@ class Program
 				imgs_saved++;
 
 				img.Save(String.Format("{0}/{1}.png", OUTPUT_DIRECTORY_NAME, imgs_saved));
+
+				// img.Save(String.Format("{0}/1.png", OUTPUT_DIRECTORY_NAME, imgs_saved));
 			}
 			else
 			{
