@@ -485,7 +485,7 @@ class Program
     // gets the neighbors (3..8) of the given coordinate
     static List<XY> getneighbors(int index)
     {
-		XY xy = new XY(index % WIDTH, (int)(index / WIDTH));
+		XY xy = new XY(get_x_from_index(index), get_y_from_index(index));
 
         var ret = new List<XY>(8);
         for (var dy = -1; dy <= 1; dy++)
@@ -558,7 +558,7 @@ class Program
 	static int get_self_plus_neighbor_score(List<CIELab> pixels, int index)
 	{
 		var score = 0;
-		var xy = new XY(index % WIDTH, (int)(index / WIDTH));
+		var xy = new XY(get_x_from_index(index), get_y_from_index(index));
 		for (var dy = -1; dy <= 1; dy++)
 		{
 			if (xy.y + dy == -1 || xy.y + dy == HEIGHT)
@@ -571,6 +571,27 @@ class Program
 			}
 		}
 		return (score);
+	}
+
+	static int get_x_from_index(int index)
+	{
+		return (index % WIDTH);
+	}
+
+	static int get_y_from_index(int index)
+	{
+		return ((int)(index / WIDTH));
+	}
+
+	static void set_img_pixel(Bitmap img, List<CIELab> pixels, int index)
+	{
+		CIELab lab = pixels[index];
+		RGB rgb = LabtoRGB(lab.L, lab.A, lab.B);
+
+		Color color = new Color(); // TODO: Necessary?
+		color = Color.FromArgb(rgb.Red, rgb.Green, rgb.Blue);
+
+		img.SetPixel(get_x_from_index(index), get_y_from_index(index), color);
 	}
 
     static void Main(string[] args)
@@ -590,6 +611,21 @@ class Program
 		}
 
 		pixels.Sort(new Comparison<CIELab>((c1, c2) => rnd.Next(3) - 1));
+
+		var img = new Bitmap(WIDTH, HEIGHT, PixelFormat.Format24bppRgb);
+		for (var y = 0; y < HEIGHT; y++)
+		{
+			for (var x = 0; x < WIDTH; x++)
+			{
+				CIELab lab = pixels[x + y * WIDTH];
+				RGB rgb = LabtoRGB(lab.L, lab.A, lab.B);
+
+				Color color = new Color(); // TODO: Necessary?
+				color = Color.FromArgb(rgb.Red, rgb.Green, rgb.Blue);
+
+				img.SetPixel(x, y, color);
+			}
+		}
 
 		var loops = 0;
 		var lowest_score = int.MaxValue;
@@ -623,26 +659,12 @@ class Program
 				lowest_score = score;
 				Console.WriteLine("Score {0}, Image {1}, Loop {2}, Seconds {3}", score, imgs_saved, loops, DateTimeOffset.Now.ToUnixTimeSeconds() - starting_time);
 
-				var img = new Bitmap(WIDTH, HEIGHT, PixelFormat.Format24bppRgb);
-				for (var y = 0; y < HEIGHT; y++)
-				{
-					for (var x = 0; x < WIDTH; x++)
-					{
-						CIELab lab = pixels[x + y * WIDTH];
-						RGB rgb = LabtoRGB(lab.L, lab.A, lab.B);
-
-						Color color = new Color(); // TODO: Necessary?
-						color = Color.FromArgb(rgb.Red, rgb.Green, rgb.Blue);
-
-						img.SetPixel(x, y, color);
-					}
-				}
+				set_img_pixel(img, pixels, index_1);
+				set_img_pixel(img, pixels, index_2);
 
 				imgs_saved++;
 
 				img.Save(String.Format("{0}/{1}.png", OUTPUT_DIRECTORY_NAME, imgs_saved));
-
-				// img.Save(String.Format("{0}/1.png", OUTPUT_DIRECTORY_NAME, imgs_saved));
 			}
 			else
 			{
