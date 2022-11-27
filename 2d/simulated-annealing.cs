@@ -591,7 +591,7 @@ class Program
 		}
 
 		// TODO: RESTORE!!!!!!!!!!
-		// pixels.Sort(new Comparison<CIELab>((c1, c2) => rnd.Next(3) - 1));
+		pixels.Sort(new Comparison<CIELab>((c1, c2) => rnd.Next(3) - 1));
 
 		var loops = 0;
 		var lowest_score = int.MaxValue;
@@ -601,15 +601,17 @@ class Program
 
 		while (true)
 		{
-			int index_1 = 0;
-			int index_2 = 3;
+			// int index_1 = 0;
+			// int index_2 = 3;
 
 			// TODO: RESTORE!!!!!!!!!!
-			// int index_1 = rnd.Next(WIDTH * HEIGHT);
-			// int index_2;
-			// do {
-			// 	index_2 = rnd.Next(WIDTH * HEIGHT);
-			// } while (index_1 == index_2);
+			int index_1 = rnd.Next(WIDTH * HEIGHT);
+			int index_2;
+			do {
+				index_2 = rnd.Next(WIDTH * HEIGHT);
+			} while (index_1 == index_2);
+
+			var old_score = score;
 
 			var old_1 = get_self_plus_neighbor_score(pixels, index_1);
 
@@ -627,21 +629,21 @@ class Program
 			var new_2 = get_self_plus_neighbor_score(pixels, index_2);
 
 			// score = get_total_score(pixels);
-			// score = score - old_1 - old_2 + new_1 + new_2;
+			score = score - old_1 - old_2 + new_1 + new_2;
 
 			// score += get_self_plus_neighbor_score(pixels, index_1);
 			// score += get_self_plus_neighbor_score(pixels, index_2);
 
-			Console.WriteLine("old real total score {0}", score);
-			Console.WriteLine("old 1 {0}", old_1);
-			Console.WriteLine("new 1 {0}", new_1);
-			Console.WriteLine("old 2 {0}", old_2);
-			Console.WriteLine("new 2 {0}", new_2);
-			// Console.WriteLine("predicted new total score {0}", score - old_1 + new_1);
-			// Console.WriteLine("predicted new total score {0}", score - old_2 + new_2);
-			Console.WriteLine("predicted new total score {0}", score - old_1 - old_2 + new_1 + new_2);
-			Console.WriteLine("new real total score {0}", get_total_score(pixels));
-			return ;
+			// Console.WriteLine("old real total score {0}", old_score);
+			// Console.WriteLine("old 1 {0}", old_1);
+			// Console.WriteLine("new 1 {0}", new_1);
+			// Console.WriteLine("old 2 {0}", old_2);
+			// Console.WriteLine("new 2 {0}", new_2);
+			// // Console.WriteLine("predicted new total score {0}", score - old_1 + new_1);
+			// // Console.WriteLine("predicted new total score {0}", score - old_2 + new_2);
+			// Console.WriteLine("predicted new total score {0}", score - old_1 - old_2 + new_1 + new_2);
+			// Console.WriteLine("new real total score {0}", get_total_score(pixels));
+			// return ;
 
 			if (score < lowest_score)
 			{
@@ -673,6 +675,7 @@ class Program
 			{
 				pixels[index_1] = old_index_1_pixel;
 				pixels[index_2] = old_index_2_pixel;
+				score = old_score;
 			}
 
 			loops++;
