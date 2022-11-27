@@ -23,13 +23,11 @@ class Program
 {
     // algorithm settings, feel free to mess with it
     const bool AVERAGE = true;
-    // const int NUMCOLORS = 32;
     const int WIDTH = 16;
     const int HEIGHT = 16;
     const int STARTX = WIDTH/2;
     const int STARTY = HEIGHT/2;
 	const string OUTPUT_DIRECTORY_NAME = "swap-output";
-	const double COOLING_RATE = 0.99999;
 
     // represent a coordinate
     struct XY

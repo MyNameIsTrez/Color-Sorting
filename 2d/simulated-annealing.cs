@@ -23,9 +23,8 @@ class Program
 {
     // algorithm settings, feel free to mess with it
     const bool AVERAGE = true;
-    // const int NUMCOLORS = 32;
-    const int WIDTH = 96;
-    const int HEIGHT = 54;
+    const int WIDTH = 16;
+    const int HEIGHT = 16;
     const int STARTX = WIDTH/2;
     const int STARTY = HEIGHT/2;
 	const string OUTPUT_DIRECTORY_NAME = "simulated-annealing-output";
@@ -579,7 +578,7 @@ class Program
 		var rnd = new Random();
 
 		var pixels = new List<CIELab>();
-		Bitmap palette = new Bitmap("cortex-command-small.jpg");
+		Bitmap palette = new Bitmap("palette.bmp");
 		for (int y = 0; y < palette.Height; y++)
 		{
 			for (int x = 0; x < palette.Width; x++)
@@ -590,15 +589,13 @@ class Program
 			}
 		}
 
-		// pixels.Sort(new Comparison<CIELab>((c1, c2) => rnd.Next(3) - 1));
+		pixels.Sort(new Comparison<CIELab>((c1, c2) => rnd.Next(3) - 1));
 
 		var loops = 0;
 		var lowest_score = int.MaxValue;
 		var imgs_saved = 0;
 		var starting_time = DateTimeOffset.Now.ToUnixTimeSeconds();
-		Console.WriteLine("calculating total score");
 		var score = get_total_score(pixels);
-		Console.WriteLine("done calculating total score");
 
 		while (true)
 		{
@@ -613,8 +610,6 @@ class Program
 			var old_index_1_pixel = pixels[index_1];
 			var old_index_2_pixel = pixels[index_2];
 
-			// Console.WriteLine("foo");
-
 			score -= get_self_plus_neighbor_score(pixels, index_1);
 			pixels[index_1] = old_index_2_pixel;
 			score += get_self_plus_neighbor_score(pixels, index_1);
@@ -626,18 +621,8 @@ class Program
 			if (score < lowest_score)
 			{
 				lowest_score = score;
-			}
-			else
-			{
-				pixels[index_1] = old_index_1_pixel;
-				pixels[index_2] = old_index_2_pixel;
-				score = old_score;
-			}
-
-			if (loops % 1e4 == 0)
-			{
 				Console.WriteLine("Score {0}, Image {1}, Loop {2}, Seconds {3}", score, imgs_saved, loops, DateTimeOffset.Now.ToUnixTimeSeconds() - starting_time);
-				Console.WriteLine("foo");
+
 				var img = new Bitmap(WIDTH, HEIGHT, PixelFormat.Format24bppRgb);
 				for (var y = 0; y < HEIGHT; y++)
 				{
@@ -652,13 +637,18 @@ class Program
 						img.SetPixel(x, y, color);
 					}
 				}
-				Console.WriteLine("bar");
 
 				imgs_saved++;
 
 				img.Save(String.Format("{0}/{1}.png", OUTPUT_DIRECTORY_NAME, imgs_saved));
 
 				// img.Save(String.Format("{0}/1.png", OUTPUT_DIRECTORY_NAME, imgs_saved));
+			}
+			else
+			{
+				pixels[index_1] = old_index_1_pixel;
+				pixels[index_2] = old_index_2_pixel;
+				score = old_score;
 			}
 
 			loops++;
