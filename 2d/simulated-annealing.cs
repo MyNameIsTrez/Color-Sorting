@@ -3,7 +3,6 @@
 // https://patrickwu.space/2016/06/12/csharp-color/#rgb2lab
 //
 // Compile and run: C:/Windows/Microsoft.NET/Framework/v4.0.30319/csc.exe /out:simulated-annealing.exe simulated-annealing.cs && ./simulated-annealing.exe
-// Create mp4: ffmpeg -f image2 -framerate 80 -i simulated-annealing-output/%d.png -c:v libx264 -pix_fmt yuv420p -vf scale=1024x1024:flags=neighbor -crf 1 palette.mp4
 
 // TODO: Comment this out for performance boost
 // #define DEBUG
@@ -21,14 +20,29 @@ using System.IO;
 
 class Program
 {
-    // algorithm settings, feel free to mess with it
+    // algorithm settings, feel free to mess with these
+	// const string INPUT_IMAGE_PATH = "palette.bmp";
+    // const int WIDTH = 16;
+    // const int HEIGHT = 16;
+
+	// const string INPUT_IMAGE_PATH = "cortex-command-small.jpg";
+    // const int WIDTH = 1920;
+    // const int HEIGHT = 1080;
+	// For explanation of select and setpts: https://superuser.com/a/1156862/1287700
+	// Create mp4: ffmpeg -f image2 -framerate 60 -i simulated-annealing-output/%d.png -vf "select='not(mod(n,40))',setpts=N/60/TB,scale=960x540:flags=neighbor" -c:v libx264 -pix_fmt yuv420p -crf 1 palette.mp4
+
+	const string INPUT_IMAGE_PATH = "cortex-command.jpg";
+    const int WIDTH = 1920;
+    const int HEIGHT = 1080;
+
+	const int SUCCESSFUL_SWAPS_PER_IMG_SAVE = 1000;
+	const bool SORT = false;
     const bool AVERAGE = true;
-    const int WIDTH = 16;
-    const int HEIGHT = 16;
-    const int STARTX = WIDTH/2;
-    const int STARTY = HEIGHT/2;
 	const string OUTPUT_DIRECTORY_NAME = "simulated-annealing-output";
 	const double COOLING_RATE = 0.99999;
+
+    const int STARTX = WIDTH/2;
+    const int STARTY = HEIGHT/2;
 
     // represent a coordinate
     struct XY
@@ -599,7 +613,8 @@ class Program
 		var rnd = new Random();
 
 		var pixels = new List<CIELab>();
-		Bitmap palette = new Bitmap("palette.bmp");
+		Console.WriteLine("Turning input image into CIELab pixels...");
+		Bitmap palette = new Bitmap(INPUT_IMAGE_PATH);
 		for (int y = 0; y < palette.Height; y++)
 		{
 			for (int x = 0; x < palette.Width; x++)
@@ -610,8 +625,13 @@ class Program
 			}
 		}
 
-		pixels.Sort(new Comparison<CIELab>((c1, c2) => rnd.Next(3) - 1));
+		if (SORT)
+		{
+			Console.WriteLine("Sorting pixels...");
+			pixels.Sort(new Comparison<CIELab>((c1, c2) => rnd.Next(3) - 1));
+		}
 
+		Console.WriteLine("Turning pixels into img...");
 		var img = new Bitmap(WIDTH, HEIGHT, PixelFormat.Format24bppRgb);
 		for (var y = 0; y < HEIGHT; y++)
 		{
@@ -626,8 +646,10 @@ class Program
 				img.SetPixel(x, y, color);
 			}
 		}
+		Console.WriteLine("Done turning pixels into img!");
 
 		var loops = 0;
+		var successful_swaps = 0;
 		var lowest_score = int.MaxValue;
 		var imgs_saved = 0;
 		var starting_time = DateTimeOffset.Now.ToUnixTimeSeconds();
@@ -657,14 +679,20 @@ class Program
 			if (score < lowest_score)
 			{
 				lowest_score = score;
-				Console.WriteLine("Score {0}, Image {1}, Loop {2}, Seconds {3}", score, imgs_saved, loops, DateTimeOffset.Now.ToUnixTimeSeconds() - starting_time);
+				successful_swaps++;
 
-				set_img_pixel(img, pixels, index_1);
-				set_img_pixel(img, pixels, index_2);
+				if (successful_swaps % SUCCESSFUL_SWAPS_PER_IMG_SAVE == 1)
+				{
+					Console.WriteLine("Score {0}, Image {1}, Loop {2}, Success rate 1/{3}, Seconds {4}", score, imgs_saved, loops, loops / successful_swaps, DateTimeOffset.Now.ToUnixTimeSeconds() - starting_time);
 
-				imgs_saved++;
+					set_img_pixel(img, pixels, index_1);
+					set_img_pixel(img, pixels, index_2);
 
-				img.Save(String.Format("{0}/{1}.png", OUTPUT_DIRECTORY_NAME, imgs_saved));
+					imgs_saved++;
+
+					img.Save(String.Format("{0}/{1}.png", OUTPUT_DIRECTORY_NAME, imgs_saved));
+					Console.WriteLine("Saved");
+				}
 			}
 			else
 			{

@@ -3,7 +3,7 @@
 // https://patrickwu.space/2016/06/12/csharp-color/#rgb2lab
 //
 // Compile and run: C:/Windows/Microsoft.NET/Framework/v4.0.30319/csc.exe /out:swap.exe swap.cs && ./swap.exe
-// Create mp4: ffmpeg -f image2 -framerate 80 -i swap-output/%d.png -c:v libx264 -pix_fmt yuv420p -vf scale=1024x1024:flags=neighbor -crf 1 palette.mp4
+// Create mp4: ffmpeg -f image2 -framerate 200 -i swap-output/%d.png -c:v libx264 -pix_fmt yuv420p -vf scale=1024x1024:flags=neighbor -crf 1 palette.mp4
 
 // TODO: Comment this out for performance boost
 // #define DEBUG
@@ -21,13 +21,16 @@ using System.IO;
 
 class Program
 {
-    // algorithm settings, feel free to mess with it
-    const bool AVERAGE = true;
+    // algorithm settings, feel free to mess with these
+	const string INPUT_IMAGE_PATH = "palette.bmp";
     const int WIDTH = 16;
     const int HEIGHT = 16;
+    const bool AVERAGE = true;
+	const string OUTPUT_DIRECTORY_NAME = "swap-output";
+	const double COOLING_RATE = 0.99999;
+
     const int STARTX = WIDTH/2;
     const int STARTY = HEIGHT/2;
-	const string OUTPUT_DIRECTORY_NAME = "swap-output";
 
     // represent a coordinate
     struct XY
@@ -598,7 +601,7 @@ class Program
 		var rnd = new Random();
 
 		var pixels = new List<CIELab>();
-		Bitmap palette = new Bitmap("palette.bmp");
+		Bitmap palette = new Bitmap(INPUT_IMAGE_PATH);
 		for (int y = 0; y < palette.Height; y++)
 		{
 			for (int x = 0; x < palette.Width; x++)
