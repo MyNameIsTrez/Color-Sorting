@@ -4,7 +4,8 @@ using System.Drawing;
 
 internal class Program
 {
-    const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/palette.bmp";
+    const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/cat.jpg";
+    //const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/palette.bmp";
     const string OUTPUT_IMAGES_DIRECTORY_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting";
 
     static private LabInformation LabInfo = new LabInformation();
@@ -13,10 +14,10 @@ internal class Program
 
     private static void Main(string[] args)
     {
-        Console.WriteLine("Turning input image into CIELab pixels...");
-
         // This is a noop that prevents the next WriteLine() from happening before stuff is initialized
         var _ = LabInfo;
+
+        Console.WriteLine("Turning input image into CIELab pixels...");
 
         Console.WriteLine("Lab normalizing pixels...");
         LabNormalizePixels();
@@ -121,7 +122,7 @@ internal class Program
 
             for (double r = 0; r < 256; ++r)
             {
-                Console.Write(String.Format("\r{0}/255", r));
+                Console.Write(String.Format("\rCalculating Lab min, max and range. Progress: {0}/255", r));
 
                 for (double g = 0; g < 256; ++g)
                     for (double b = 0; b < 256; ++b)
