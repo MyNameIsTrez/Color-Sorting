@@ -7,17 +7,34 @@ internal class Program
     const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/palette.bmp";
     const string OUTPUT_IMAGES_DIRECTORY_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting";
 
+    static private LabInformation LabInfo = new LabInformation();
+    static private Bitmap palette = new Bitmap(INPUT_IMAGE_PATH);
+    static private Rgba32[,] pixels = new Rgba32[palette.Height, palette.Width];
+
     private static void Main(string[] args)
     {
-        var LabInfo = new LabInfo();
-
         LabInfo.Print();
 
         Console.WriteLine("Turning input image into CIELab pixels...");
-        var palette = new Bitmap(INPUT_IMAGE_PATH);
 
-        var pixels = new Rgba32[palette.Height, palette.Width];
+        LabNormalizePixels();
 
+        LabDenormalizePixels();
+
+        Console.WriteLine("Allocating pixels GPU buffer...");
+        using var texture = GraphicsDevice.GetDefault().AllocateReadWriteTexture2D<Rgba32, float4>(pixels);
+        //using var texture = GraphicsDevice.GetDefault().AllocateReadWriteBuffer(pixels.ToArray());
+        //using var texture = GraphicsDevice.GetDefault().LoadReadWriteTexture2D<Rgba32, float4>("I:/Programming/Color-Sorting/Color-Sorting/palette.bmp");
+
+        Console.WriteLine(texture);
+
+        //GraphicsDevice.GetDefault().For(texture.Width, texture.Height, new GrayscaleEffect(texture));
+
+        texture.Save(Path.Combine(OUTPUT_IMAGES_DIRECTORY_PATH, "1.png"));
+    }
+
+    private static void LabNormalizePixels()
+    {
         for (int y = 0; y < palette.Height; y++)
         {
             for (int x = 0; x < palette.Width; x++)
@@ -33,7 +50,15 @@ internal class Program
                 pixels[y, x] = new Rgba32(normalized_L, normalized_A, normalized_B);
             }
         }
+    }
 
+    private static byte GetNormalizedLab(double x, double min, double range)
+    {
+        return Convert.ToByte(((x - min) / range) * 255);
+    }
+
+    private static void LabDenormalizePixels()
+    {
         for (int y = 0; y < palette.Height; y++)
         {
             for (int x = 0; x < palette.Width; x++)
@@ -52,29 +77,14 @@ internal class Program
                 pixels[y, x] = new Rgba32(denormalized_r, denormalized_g, denormalized_b);
             }
         }
-
-        Console.WriteLine("Allocating pixels GPU buffer...");
-        using var texture = GraphicsDevice.GetDefault().AllocateReadWriteTexture2D<Rgba32, float4>(pixels);
-        //using var texture = GraphicsDevice.GetDefault().AllocateReadWriteBuffer(pixels.ToArray());
-        //using var texture = GraphicsDevice.GetDefault().LoadReadWriteTexture2D<Rgba32, float4>("I:/Programming/Color-Sorting/Color-Sorting/palette.bmp");
-
-        Console.WriteLine(texture);
-
-        //GraphicsDevice.GetDefault().For(texture.Width, texture.Height, new GrayscaleEffect(texture));
-
-        texture.Save(Path.Combine(OUTPUT_IMAGES_DIRECTORY_PATH, "1.png"));
     }
 
-    private static byte GetNormalizedLab(double x, double min, double range)
-    {
-        return Convert.ToByte(((x - min) / range) * 255);
-    }
     private static double GetDenormalizedLab(double x, double min, double range)
     {
         return ((x / 255) * range) + min;
     }
 
-    class LabInfo
+    class LabInformation
     {
         public IColorConverter<RGBColor, LabColor> RGBToLab;
         public IColorConverter<LabColor, RGBColor> LabToRGB;
@@ -91,7 +101,7 @@ internal class Program
         public double RangeA;
         public double RangeB;
 
-        public LabInfo()
+        public LabInformation()
         {
             var rgbWorkingSpace = RGBWorkingSpaces.sRGB;
             RGBToLab = new ConverterBuilder().FromRGB(rgbWorkingSpace).ToLab(Illuminants.D50).Build();
