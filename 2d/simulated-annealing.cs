@@ -17,6 +17,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Diagnostics;
 using System.IO;
+using OpenTK.Windowing.Common;
 
 class Program
 {
@@ -683,7 +684,7 @@ class Program
 
 				if (successful_swaps % SUCCESSFUL_SWAPS_PER_IMG_SAVE == 1)
 				{
-					Console.WriteLine("Score {0}, Image {1}, Loop {2}, Success rate 1/{3}, Seconds {4}", score, imgs_saved, loops, loops / successful_swaps, DateTimeOffset.Now.ToUnixTimeSeconds() - starting_time);
+					Console.WriteLine("Score {0}, Image {1}, Loop {2}, Successful swaps {3}, Success rate 1/{4}, Seconds {5}", score, imgs_saved, loops, successful_swaps, loops / successful_swaps, DateTimeOffset.Now.ToUnixTimeSeconds() - starting_time);
 
 					set_img_pixel(img, pixels, index_1);
 					set_img_pixel(img, pixels, index_2);
