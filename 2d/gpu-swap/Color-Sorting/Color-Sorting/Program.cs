@@ -13,12 +13,15 @@ internal class Program
 
     private static void Main(string[] args)
     {
-        LabInfo.Print();
-
         Console.WriteLine("Turning input image into CIELab pixels...");
 
+        // This is a noop that prevents the next WriteLine() from happening before stuff is initialized
+        var _ = LabInfo;
+
+        Console.WriteLine("Lab normalizing pixels...");
         LabNormalizePixels();
 
+        Console.WriteLine("Lab denormalizing pixels...");
         LabDenormalizePixels();
 
         Console.WriteLine("Allocating pixels GPU buffer...");
@@ -26,10 +29,9 @@ internal class Program
         //using var texture = GraphicsDevice.GetDefault().AllocateReadWriteBuffer(pixels.ToArray());
         //using var texture = GraphicsDevice.GetDefault().LoadReadWriteTexture2D<Rgba32, float4>("I:/Programming/Color-Sorting/Color-Sorting/palette.bmp");
 
-        Console.WriteLine(texture);
-
         //GraphicsDevice.GetDefault().For(texture.Width, texture.Height, new GrayscaleEffect(texture));
 
+        Console.WriteLine("Saving result...");
         texture.Save(Path.Combine(OUTPUT_IMAGES_DIRECTORY_PATH, "1.png"));
     }
 
@@ -119,7 +121,8 @@ internal class Program
 
             for (double r = 0; r < 256; ++r)
             {
-                Console.WriteLine(String.Format("{0}/255", r));
+                Console.Write(String.Format("\r{0}/255", r));
+
                 for (double g = 0; g < 256; ++g)
                     for (double b = 0; b < 256; ++b)
                     {
@@ -135,6 +138,8 @@ internal class Program
                         MaxB = Math.Max(MaxB, lab.b);
                     }
             }
+
+            Console.Write("\n");
 
             RangeL = MaxL - MinL;
             RangeA = MaxA - MinA;
