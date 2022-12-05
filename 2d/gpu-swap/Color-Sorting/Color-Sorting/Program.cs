@@ -6,18 +6,18 @@ internal class Program
 {
     const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/cat.jpg";
     //const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/palette.bmp";
+
     const string OUTPUT_IMAGES_DIRECTORY_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting";
 
-    static private LabInformation LabInfo = new LabInformation();
-    static private Bitmap palette = new Bitmap(INPUT_IMAGE_PATH);
-    static private Rgba32[,] pixels = new Rgba32[palette.Height, palette.Width];
+    static private LabInformation LabInfo;
+    static private Bitmap palette;
+    static private Rgba32[,] pixels;
 
     private static void Main(string[] args)
     {
-        // This is a noop that prevents the next WriteLine() from happening before stuff is initialized
-        var _ = LabInfo;
-
-        Console.WriteLine("Turning input image into CIELab pixels...");
+        LabInfo = new LabInformation();
+        palette = new Bitmap(INPUT_IMAGE_PATH);
+        pixels = new Rgba32[palette.Height, palette.Width];
 
         Console.WriteLine("Lab normalizing pixels...");
         LabNormalizePixels();
@@ -25,8 +25,9 @@ internal class Program
         Console.WriteLine("Lab denormalizing pixels...");
         LabDenormalizePixels();
 
-        Console.WriteLine("Allocating pixels GPU buffer...");
+        Console.WriteLine("Allocating pixels GPU texture...");
         using var texture = GraphicsDevice.GetDefault().AllocateReadWriteTexture2D<Rgba32, float4>(pixels);
+
         //using var texture = GraphicsDevice.GetDefault().AllocateReadWriteBuffer(pixels.ToArray());
         //using var texture = GraphicsDevice.GetDefault().LoadReadWriteTexture2D<Rgba32, float4>("I:/Programming/Color-Sorting/Color-Sorting/palette.bmp");
 
