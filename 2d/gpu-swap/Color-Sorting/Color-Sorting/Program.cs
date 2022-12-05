@@ -4,8 +4,9 @@ using System.Drawing;
 
 internal class Program
 {
-    const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/cat.jpg";
+    //const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/cat.jpg";
     //const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/palette.bmp";
+    const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/10x10_palette.bmp";
 
     const string OUTPUT_IMAGES_DIRECTORY_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting";
 
@@ -15,8 +16,26 @@ internal class Program
 
     private static void Main(string[] args)
     {
-        LabInfo = new LabInformation();
         palette = new Bitmap(INPUT_IMAGE_PATH);
+        var width = palette.Width;
+        var height = palette.Height;
+
+        var positions = new List<int>(Enumerable.Range(0, width * height));
+        var availableCount = width * height;
+
+        availableCount = MarkUnavailable(1, positions, availableCount);
+        availableCount = MarkUnavailable(1, positions, availableCount);
+
+        PrintGrid(positions, availableCount, width, height);
+
+        /*
+        foreach (var p in positions)
+        {
+            Console.WriteLine(p);
+        }*/
+
+        /*
+        LabInfo = new LabInformation();
         pixels = new Rgba32[palette.Height, palette.Width];
 
         Console.WriteLine("Lab normalizing pixels...");
@@ -35,13 +54,106 @@ internal class Program
 
         Console.WriteLine("Saving result...");
         texture.Save(Path.Combine(OUTPUT_IMAGES_DIRECTORY_PATH, "1.png"));
+        */
+    }
+
+    /*
+     * Prints this:
+     * +--+--+
+     * |00|01|
+     * |  |XX|
+     * +--+--+
+     * |02|03|
+     * |  |xx|
+     * +--+--+
+     */
+    private static void PrintGrid(List<int> positions, int availableCount, int width, int height)
+    {
+        for (var y = 0; y < height; ++y)
+        {
+            PrintHorizontalLine(width);
+
+            for (var x = 0; x < width; ++x)
+            {
+                var index = x + y * width;
+                Console.Write("|{0}", index.ToString("D2"));
+            }
+
+            Console.WriteLine("|");
+
+            for (var x = 0; x < width; ++x)
+            {
+                var index = x + y * width;
+                Console.Write("|{0}", IsAvailable(index, positions, availableCount) ? "  " : "XX");
+            }
+
+            Console.WriteLine("|");
+        }
+
+        PrintHorizontalLine(width);
+    }
+
+    /*
+     * Prints this:
+     * +--+--+
+     */
+    private static void PrintHorizontalLine(int width)
+    {
+        for (var x = 0; x < width; ++x)
+        {
+            Console.Write("+--");
+        }
+
+        Console.WriteLine("+");
+    }
+
+    /*
+     * Example:
+     * Whatever is to the right of the | in these lists is unavailable due to availableCount
+     * 
+     * availableCount = 4
+     * positions = [ 0, 1, 2, 3 | ]
+     * 
+     * MarkUnavailable(1)
+     * availableCount == 3
+     * positions == [ 0, 3, 2, | 1 ]
+     * 
+     * MarkUnavailable(1) // Nothing happens since index 1 was already removed
+     * availableCount == 3
+     * positions == [ 0, 3, 2, | 1 ]
+     * 
+     * MarkUnavailable(0)
+     * availableCount == 2
+     * positions == [ 2, 3, | 0, 1 ]
+     */
+    private static int MarkUnavailable(int index, List<int> positions, int availableCount)
+    {
+        if (IsAvailable(index, positions, availableCount))
+        {
+            var temp = positions[index];
+            positions[index] = positions[availableCount - 1];
+            positions[availableCount - 1] = temp;
+
+            --availableCount;
+        }
+
+        return availableCount;
+    }
+
+    /*
+     * See MarkUnavailable() documentation.
+     */
+    private static bool IsAvailable(int index, List<int> positions, int availableCount)
+    {
+        var real_index = positions[index];
+        return real_index < availableCount;
     }
 
     private static void LabNormalizePixels()
     {
-        for (int y = 0; y < palette.Height; y++)
+        for (int y = 0; y < palette.Height; ++y)
         {
-            for (int x = 0; x < palette.Width; x++)
+            for (int x = 0; x < palette.Width; ++x)
             {
                 var pixel = palette.GetPixel(x, y);
 
@@ -63,9 +175,9 @@ internal class Program
 
     private static void LabDenormalizePixels()
     {
-        for (int y = 0; y < palette.Height; y++)
+        for (int y = 0; y < palette.Height; ++y)
         {
-            for (int x = 0; x < palette.Width; x++)
+            for (int x = 0; x < palette.Width; ++x)
             {
                 var pixel = pixels[y, x];
 
