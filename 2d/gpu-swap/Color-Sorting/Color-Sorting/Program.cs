@@ -28,29 +28,6 @@ internal class Program
 
         var rnd = new Random();
 
-        /*
-        Console.Clear();
-        Console.WriteLine("move: None");
-        Console.WriteLine(String.Format("availableCount: {0}", availableCount));
-        PrintAvailable(available, availableCount);
-        PrintPositions(positions);
-        PrintGrid(positions, availableCount, width, height);
-        var indices = new List<int> { 2, 6, 1, 5, 7 };
-        foreach (var index in indices)
-        {
-            //Thread.Sleep(1000);
-
-            availableCount = MarkUnavailable(index, available, positions, availableCount);
-            //Console.Clear();
-            Console.WriteLine(String.Format("move: {0}", index.ToString("D2")));
-            Console.WriteLine(String.Format("availableCount: {0}", availableCount));
-            PrintAvailable(available, availableCount);
-            PrintPositions(positions);
-            PrintGrid(positions, availableCount, width, height);
-        }
-        */
-
-
         Console.Clear();
         PrintGrid(positions, availableCount, width, height);
         while (availableCount > 0)
@@ -64,7 +41,6 @@ internal class Program
             Console.WriteLine(availableCount);
             PrintGrid(positions, availableCount, width, height);
         }
-
 
         /*
         LabInfo = new LabInformation();
@@ -151,7 +127,7 @@ internal class Program
     }
 
     /*
-     * Explanation of this function:
+     * Example usage of this function:
      * Whatever is to the right of the | in these lists is "unavailable" due to availableCount
      * 
      * availableCount = 4
@@ -164,12 +140,12 @@ internal class Program
      * availableCount == 3
      * 
      * MarkUnavailable(2) // Nothing happens since this index was already removed, because `positions[2] < availableCount` -> `3 < 3` -> `false`
-     * available == [ #, 1, 3, | 2 ]
+     * available == [ 0, 1, 3, | 2 ]
      * positions == [ 0, 1, 3, 2 ]
      * availableCount == 3
      * 
      * MarkUnavailable(0)
-     * available == [ 3, 1, | #, 2 ] 
+     * available == [ 3, 1, | 0, 2 ] 
      * positions == [ 2, 1, 3, 0 ] // Note how you still need the "available" list since the 2 and 0 swapping here makes no sense otherwise
      * availableCount == 2
      */
@@ -179,14 +155,14 @@ internal class Program
         {
             var available_index = positions[index];
 
-            var a = available[available_index]; // a = #
-            var b = available[availableCount - 1]; // b = 3
+            var a = available[available_index];
+            var b = available[availableCount - 1];
 
-            available[available_index] = b; // available[0] = 3
-            available[availableCount - 1] = a; // available[2] = #
+            available[available_index] = b;
+            available[availableCount - 1] = a;
 
-            positions[index] = availableCount - 1; // positions[0] = 2
-            positions[b] = available_index; // positions[3] = 0
+            positions[index] = availableCount - 1;
+            positions[b] = available_index;
 
             --availableCount;
         }
@@ -195,7 +171,7 @@ internal class Program
     }
 
     /*
-     * See MarkUnavailable() documentation.
+     * See the MarkUnavailable() example in its documentation.
      */
     private static bool IsAvailable(int index, List<int> positions, int availableCount)
     {
