@@ -32,10 +32,13 @@ internal class Program
         PrintGrid(positions, availableCount, width, height);
         while (availableCount > 0)
         {
-            Thread.Sleep(50);
+            Thread.Sleep(1000);
 
             var index = available[rnd.Next(availableCount)];
-            availableCount = MarkUnavailable(index, available, positions, availableCount);
+
+            //availableCount = MarkUnavailable(index, available, positions, availableCount);
+            availableCount = MarkNeighborsAndSelfUnavailable(index, available, positions, availableCount, width, height);
+
             Console.Clear();
             Console.WriteLine(index.ToString("D2"));
             Console.WriteLine(availableCount);
@@ -83,7 +86,7 @@ internal class Program
 
             for (var x = 0; x < width; ++x)
             {
-                var index = x + y * width;
+                var index = GetIndex(x, y, width);
                 Console.Write("|{0}", index.ToString("D2"));
             }
 
@@ -91,7 +94,7 @@ internal class Program
 
             for (var x = 0; x < width; ++x)
             {
-                var index = x + y * width;
+                var index = GetIndex(x, y, width);
                 Console.Write("|{0}", IsAvailable(index, positions, availableCount) ? "  " : "XX");
             }
 
@@ -124,6 +127,32 @@ internal class Program
     private static void PrintPositions(List<int> positions)
     {
         Console.WriteLine(String.Format("positions: [ {0} ]", String.Join(", ", positions)));
+    }
+
+    private static int MarkNeighborsAndSelfUnavailable(int index, List<int> available, List<int> positions, int availableCount, int width, int height)
+    {
+        int x = index % width;
+        int y = (int)(index / width);
+
+        for (var dy = -2; dy <= 2; ++dy)
+        {
+            if (y + dy < 0 || y + dy >= height)
+                continue;
+            for (var dx = -2; dx <= 2; ++dx)
+            {
+                if (x + dx < 0 || x + dx >= width)
+                    continue;
+                var neighborOrSelfIndex = GetIndex(x + dx, y + dy, width);
+                availableCount = MarkUnavailable(neighborOrSelfIndex, available, positions, availableCount);
+            }
+        }
+
+        return availableCount;
+    }
+
+    private static int GetIndex(int x, int y, int width)
+    {
+        return x + y * width;
     }
 
     /*
