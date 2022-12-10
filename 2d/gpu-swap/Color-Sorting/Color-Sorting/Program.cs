@@ -1,6 +1,7 @@
 ﻿using Colourful;
 using ComputeSharp;
 using System.Drawing;
+using System.Text.Json;
 
 internal class Program
 {
@@ -10,6 +11,8 @@ internal class Program
     const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/10x10_palette.bmp";
 
     const string OUTPUT_IMAGES_DIRECTORY_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting";
+
+    const string LAB_INFO_JSON_FILE_PATH = "LabInfo.json";
 
     static private LabInformation labInfo;
     static private Bitmap img;
@@ -21,8 +24,10 @@ internal class Program
         var width = img.Width;
         var height = img.Height;
 
-        /*
+
         labInfo = new LabInformation();
+        labInfo.Init();
+
         // TODO: Try using Rgb everywhere instead, to save bytes.
         pixels = new Rgba32[height, width];
 
@@ -34,9 +39,8 @@ internal class Program
 
         Console.WriteLine("Allocating pixels GPU texture...");
         using var texture = GraphicsDevice.GetDefault().AllocateReadWriteTexture2D<Rgba32, float4>(pixels);
-        */
 
-
+        /*
         var positions = Enumerable.Range(0, width * height).ToList();
 
         var available = positions.ToList();
@@ -65,22 +69,22 @@ internal class Program
         }
 
         availableIndices.ForEach(Console.WriteLine);
+        */
+
 
         // If `availableIndices` is `[ A, B, C ]`, then `[ A, B ]` is the only pair of indices that will be swapped
         // Using availableIndices[ThreadIds.X * 2] and availableIndices[ThreadIds.X * 2 + 1]
         //GraphicsDevice.GetDefault().For((int)(availableIndices.Count / 2), new Foo(availableIndices, img));
 
-        //Console.WriteLine(GraphicsDevice.GetDefault().IsReadWriteTexture2DSupportedForType<Rgba32>());
-
 
         //using var texture = GraphicsDevice.GetDefault().AllocateReadWriteBuffer(pixels.ToArray());
         //using var texture = GraphicsDevice.GetDefault().LoadReadWriteTexture2D<Rgba32, float4>("I:/Programming/Color-Sorting/Color-Sorting/palette.bmp");
 
-        //GraphicsDevice.GetDefault().For(texture.Width, texture.Height, new GrayscaleEffect(texture));
+        GraphicsDevice.GetDefault().For(texture.Width, texture.Height, new GrayscaleEffect(texture));
 
 
-        //Console.WriteLine("Saving result...");
-        //texture.Save(Path.Combine(OUTPUT_IMAGES_DIRECTORY_PATH, "1.png"));
+        Console.WriteLine("Saving result...");
+        texture.Save(Path.Combine(OUTPUT_IMAGES_DIRECTORY_PATH, "1.png"));
 
     }
 
@@ -280,25 +284,45 @@ internal class Program
         public IColorConverter<RGBColor, LabColor> RGBToLab;
         public IColorConverter<LabColor, RGBColor> LabToRGB;
 
-        public double minL;
-        public double minA;
-        public double minB;
+        public double minL { get; set; }
+        public double minA { get; set; }
+        public double minB { get; set; }
 
         private double maxL = double.MinValue;
         private double maxA = double.MinValue;
         private double maxB = double.MinValue;
 
-        public double rangeL;
-        public double rangeA;
-        public double rangeB;
+        public double rangeL { get; set; }
+        public double rangeA { get; set; }
+        public double rangeB { get; set; }
 
-        public LabInformation()
+        public void Init()
         {
             var rgbWorkingSpace = RGBWorkingSpaces.sRGB;
             RGBToLab = new ConverterBuilder().FromRGB(rgbWorkingSpace).ToLab(Illuminants.D50).Build();
             LabToRGB = new ConverterBuilder().FromLab(Illuminants.D50).ToRGB(rgbWorkingSpace).Build();
 
-            Calculate();
+            if (File.Exists(LAB_INFO_JSON_FILE_PATH))
+            {
+                string jsonString = File.ReadAllText(LAB_INFO_JSON_FILE_PATH);
+
+                LabInformation deserializedLabInfo = JsonSerializer.Deserialize<LabInformation>(jsonString);
+
+                minL = deserializedLabInfo.minL;
+                minA = deserializedLabInfo.minA;
+                minB = deserializedLabInfo.minB;
+
+                rangeL = deserializedLabInfo.rangeL;
+                rangeA = deserializedLabInfo.rangeA;
+                rangeB = deserializedLabInfo.rangeB;
+            }
+            else
+            {
+                Calculate();
+                var options = new JsonSerializerOptions { WriteIndented = true };
+                string json = JsonSerializer.Serialize(this, options);
+                File.WriteAllText(LAB_INFO_JSON_FILE_PATH, json);
+            }
         }
 
         // Source: https://stackoverflow.com/a/19099064/13279557
@@ -308,9 +332,10 @@ internal class Program
             minA = double.MaxValue;
             minB = double.MaxValue;
 
+            // TODO: Change this back to 256!!!
             for (double r = 0; r < 256; ++r)
             {
-                Console.Write(String.Format("\rCalculating Lab min, max and range. Progress: {0}/255", r));
+                Console.Write(String.Format("\rCalculating Lab min, max and range. The result will be saved to a file. Progress: {0}/255", r));
 
                 for (double g = 0; g < 256; ++g)
                     for (double b = 0; b < 256; ++b)
