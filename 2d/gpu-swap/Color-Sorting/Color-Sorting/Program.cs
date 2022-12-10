@@ -11,43 +11,20 @@ internal class Program
 
     const string OUTPUT_IMAGES_DIRECTORY_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting";
 
-    static private LabInformation LabInfo;
-    static private Bitmap palette;
+    static private LabInformation labInfo;
+    static private Bitmap img;
     static private Rgba32[,] pixels;
 
     private static void Main(string[] args)
     {
-        palette = new Bitmap(INPUT_IMAGE_PATH);
-        var width = palette.Width;
-        var height = palette.Height;
-
-        var positions = new List<int>(Enumerable.Range(0, width * height));
-
-        var available = positions.ToList();
-        var availableCount = width * height;
-
-        var rnd = new Random();
-
-        Console.Clear();
-        PrintGrid(positions, availableCount, width, height);
-        while (availableCount > 0)
-        {
-            Thread.Sleep(1000);
-
-            var index = available[rnd.Next(availableCount)];
-
-            //availableCount = MarkUnavailable(index, available, positions, availableCount);
-            availableCount = MarkNeighborsAndSelfUnavailable(index, available, positions, availableCount, width, height);
-
-            Console.Clear();
-            Console.WriteLine(index.ToString("D2"));
-            Console.WriteLine(availableCount);
-            PrintGrid(positions, availableCount, width, height);
-        }
+        img = new Bitmap(INPUT_IMAGE_PATH);
+        var width = img.Width;
+        var height = img.Height;
 
         /*
-        LabInfo = new LabInformation();
-        pixels = new Rgba32[palette.Height, palette.Width];
+        labInfo = new LabInformation();
+        // TODO: Try using Rgb everywhere instead, to save bytes.
+        pixels = new Rgba32[height, width];
 
         Console.WriteLine("Lab normalizing pixels...");
         LabNormalizePixels();
@@ -57,15 +34,54 @@ internal class Program
 
         Console.WriteLine("Allocating pixels GPU texture...");
         using var texture = GraphicsDevice.GetDefault().AllocateReadWriteTexture2D<Rgba32, float4>(pixels);
+        */
+
+
+        var positions = Enumerable.Range(0, width * height).ToList();
+
+        var available = positions.ToList();
+        var availableCount = width * height;
+
+        var availableIndices = new List<int>();
+
+        var rnd = new Random();
+
+        Console.Clear();
+        PrintGrid(positions, availableCount, width, height);
+        while (availableCount > 0)
+        {
+            Thread.Sleep(500);
+
+            var availableIndex = available[rnd.Next(availableCount)];
+            availableIndices.Add(availableIndex);
+
+            //availableCount = MarkUnavailable(index, available, positions, availableCount);
+            availableCount = MarkNeighborsAndSelfUnavailable(availableIndex, available, positions, availableCount, width, height);
+
+            Console.Clear();
+            Console.WriteLine(availableIndex.ToString("D2"));
+            Console.WriteLine(availableCount);
+            PrintGrid(positions, availableCount, width, height);
+        }
+
+        availableIndices.ForEach(Console.WriteLine);
+
+        // If `availableIndices` is `[ A, B, C ]`, then `[ A, B ]` is the only pair of indices that will be swapped
+        // Using availableIndices[ThreadIds.X * 2] and availableIndices[ThreadIds.X * 2 + 1]
+        //GraphicsDevice.GetDefault().For((int)(availableIndices.Count / 2), new Foo(availableIndices, img));
+
+        //Console.WriteLine(GraphicsDevice.GetDefault().IsReadWriteTexture2DSupportedForType<Rgba32>());
+
 
         //using var texture = GraphicsDevice.GetDefault().AllocateReadWriteBuffer(pixels.ToArray());
         //using var texture = GraphicsDevice.GetDefault().LoadReadWriteTexture2D<Rgba32, float4>("I:/Programming/Color-Sorting/Color-Sorting/palette.bmp");
 
         //GraphicsDevice.GetDefault().For(texture.Width, texture.Height, new GrayscaleEffect(texture));
 
-        Console.WriteLine("Saving result...");
-        texture.Save(Path.Combine(OUTPUT_IMAGES_DIRECTORY_PATH, "1.png"));
-        */
+
+        //Console.WriteLine("Saving result...");
+        //texture.Save(Path.Combine(OUTPUT_IMAGES_DIRECTORY_PATH, "1.png"));
+
     }
 
     /*
@@ -129,10 +145,10 @@ internal class Program
         Console.WriteLine(String.Format("positions: [ {0} ]", String.Join(", ", positions)));
     }
 
-    private static int MarkNeighborsAndSelfUnavailable(int index, List<int> available, List<int> positions, int availableCount, int width, int height)
+    private static int MarkNeighborsAndSelfUnavailable(int availableIndex, List<int> available, List<int> positions, int availableCount, int width, int height)
     {
-        int x = index % width;
-        int y = (int)(index / width);
+        int x = availableIndex % width;
+        int y = (int)(availableIndex / width);
 
         for (var dy = -2; dy <= 2; ++dy)
         {
@@ -142,8 +158,8 @@ internal class Program
             {
                 if (x + dx < 0 || x + dx >= width)
                     continue;
-                var neighborOrSelfIndex = GetIndex(x + dx, y + dy, width);
-                availableCount = MarkUnavailable(neighborOrSelfIndex, available, positions, availableCount);
+                var neighborOrOwnIndex = GetIndex(x + dx, y + dy, width);
+                availableCount = MarkUnavailable(neighborOrOwnIndex, available, positions, availableCount);
             }
         }
 
@@ -182,16 +198,16 @@ internal class Program
     {
         if (IsAvailable(index, positions, availableCount))
         {
-            var available_index = positions[index];
+            var availableIndex = positions[index];
 
-            var a = available[available_index];
+            var a = available[availableIndex];
             var b = available[availableCount - 1];
 
-            available[available_index] = b;
+            available[availableIndex] = b;
             available[availableCount - 1] = a;
 
             positions[index] = availableCount - 1;
-            positions[b] = available_index;
+            positions[b] = availableIndex;
 
             --availableCount;
         }
@@ -204,25 +220,25 @@ internal class Program
      */
     private static bool IsAvailable(int index, List<int> positions, int availableCount)
     {
-        var available_index = positions[index];
-        return available_index < availableCount;
+        var availableIndex = positions[index];
+        return availableIndex < availableCount;
     }
 
     private static void LabNormalizePixels()
     {
-        for (int y = 0; y < palette.Height; ++y)
+        for (int y = 0; y < img.Height; ++y)
         {
-            for (int x = 0; x < palette.Width; ++x)
+            for (int x = 0; x < img.Width; ++x)
             {
-                var pixel = palette.GetPixel(x, y);
+                var pixel = img.GetPixel(x, y);
 
                 var rgb = new RGBColor(Convert.ToDouble(pixel.R) / 255, Convert.ToDouble(pixel.G) / 255, Convert.ToDouble(pixel.B) / 255);
-                var lab = LabInfo.RGBToLab.Convert(rgb);
+                var lab = labInfo.RGBToLab.Convert(rgb);
 
-                var normalized_L = GetNormalizedLab(lab.L, LabInfo.MinL, LabInfo.RangeL);
-                var normalized_A = GetNormalizedLab(lab.a, LabInfo.MinA, LabInfo.RangeA);
-                var normalized_B = GetNormalizedLab(lab.b, LabInfo.MinB, LabInfo.RangeB);
-                pixels[y, x] = new Rgba32(normalized_L, normalized_A, normalized_B);
+                var normalizedL = GetNormalizedLab(lab.L, labInfo.minL, labInfo.rangeL);
+                var normalizedA = GetNormalizedLab(lab.a, labInfo.minA, labInfo.rangeA);
+                var normalizedB = GetNormalizedLab(lab.b, labInfo.minB, labInfo.rangeB);
+                pixels[y, x] = new Rgba32(normalizedL, normalizedA, normalizedB);
             }
         }
     }
@@ -234,22 +250,22 @@ internal class Program
 
     private static void LabDenormalizePixels()
     {
-        for (int y = 0; y < palette.Height; ++y)
+        for (int y = 0; y < img.Height; ++y)
         {
-            for (int x = 0; x < palette.Width; ++x)
+            for (int x = 0; x < img.Width; ++x)
             {
                 var pixel = pixels[y, x];
 
-                var L = GetDenormalizedLab(pixel.R, LabInfo.MinL, LabInfo.RangeL);
-                var A = GetDenormalizedLab(pixel.G, LabInfo.MinA, LabInfo.RangeA);
-                var B = GetDenormalizedLab(pixel.B, LabInfo.MinB, LabInfo.RangeB);
+                var L = GetDenormalizedLab(pixel.R, labInfo.minL, labInfo.rangeL);
+                var A = GetDenormalizedLab(pixel.G, labInfo.minA, labInfo.rangeA);
+                var B = GetDenormalizedLab(pixel.B, labInfo.minB, labInfo.rangeB);
                 var lab = new LabColor(L, A, B);
-                var rgb = LabInfo.LabToRGB.Convert(lab);
+                var rgb = labInfo.LabToRGB.Convert(lab);
 
-                var denormalized_r = Convert.ToByte(Math.Clamp(rgb.R * 255, 0, 255));
-                var denormalized_g = Convert.ToByte(Math.Clamp(rgb.G * 255, 0, 255));
-                var denormalized_b = Convert.ToByte(Math.Clamp(rgb.B * 255, 0, 255));
-                pixels[y, x] = new Rgba32(denormalized_r, denormalized_g, denormalized_b);
+                var denormalizedR = Convert.ToByte(Math.Clamp(rgb.R * 255, 0, 255));
+                var denormalizedG = Convert.ToByte(Math.Clamp(rgb.G * 255, 0, 255));
+                var denormalizedB = Convert.ToByte(Math.Clamp(rgb.B * 255, 0, 255));
+                pixels[y, x] = new Rgba32(denormalizedR, denormalizedG, denormalizedB);
             }
         }
     }
@@ -264,17 +280,17 @@ internal class Program
         public IColorConverter<RGBColor, LabColor> RGBToLab;
         public IColorConverter<LabColor, RGBColor> LabToRGB;
 
-        public double MinL;
-        public double MinA;
-        public double MinB;
+        public double minL;
+        public double minA;
+        public double minB;
 
-        private double MaxL = double.MinValue;
-        private double MaxA = double.MinValue;
-        private double MaxB = double.MinValue;
+        private double maxL = double.MinValue;
+        private double maxA = double.MinValue;
+        private double maxB = double.MinValue;
 
-        public double RangeL;
-        public double RangeA;
-        public double RangeB;
+        public double rangeL;
+        public double rangeA;
+        public double rangeB;
 
         public LabInformation()
         {
@@ -288,9 +304,9 @@ internal class Program
         // Source: https://stackoverflow.com/a/19099064/13279557
         private void Calculate()
         {
-            MinL = double.MaxValue;
-            MinA = double.MaxValue;
-            MinB = double.MaxValue;
+            minL = double.MaxValue;
+            minA = double.MaxValue;
+            minB = double.MaxValue;
 
             for (double r = 0; r < 256; ++r)
             {
@@ -302,28 +318,28 @@ internal class Program
                         var rgb = new RGBColor(r / 255, g / 255, b / 255);
                         var lab = RGBToLab.Convert(rgb);
 
-                        MinL = Math.Min(MinL, lab.L);
-                        MinA = Math.Min(MinA, lab.a);
-                        MinB = Math.Min(MinB, lab.b);
+                        minL = Math.Min(minL, lab.L);
+                        minA = Math.Min(minA, lab.a);
+                        minB = Math.Min(minB, lab.b);
 
-                        MaxL = Math.Max(MaxL, lab.L);
-                        MaxA = Math.Max(MaxA, lab.a);
-                        MaxB = Math.Max(MaxB, lab.b);
+                        maxL = Math.Max(maxL, lab.L);
+                        maxA = Math.Max(maxA, lab.a);
+                        maxB = Math.Max(maxB, lab.b);
                     }
             }
 
             Console.Write("\n");
 
-            RangeL = MaxL - MinL;
-            RangeA = MaxA - MinA;
-            RangeB = MaxB - MinB;
+            rangeL = maxL - minL;
+            rangeA = maxA - minA;
+            rangeB = maxB - minB;
         }
 
         public void Print()
         {
-            Console.WriteLine(String.Format("L is always between [{0}, {1}], range {2}", MinL, MaxL, RangeL));
-            Console.WriteLine(String.Format("a is always between [{0}, {1}], range {2}", MinA, MaxA, RangeA));
-            Console.WriteLine(String.Format("b is always between [{0}, {1}], range {2}", MinB, MaxB, RangeB));
+            Console.WriteLine(String.Format("L is always between [{0}, {1}], range {2}", minL, maxL, rangeL));
+            Console.WriteLine(String.Format("a is always between [{0}, {1}], range {2}", minA, maxA, rangeA));
+            Console.WriteLine(String.Format("b is always between [{0}, {1}], range {2}", minB, maxB, rangeB));
         }
     }
 }
