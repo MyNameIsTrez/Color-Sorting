@@ -387,12 +387,36 @@ public readonly partial struct SwapComputeShader : IComputeShader
         int aIndex1D = availableIndicesBuffer[ThreadIds.X * 2 + 0];
         int bIndex1D = availableIndicesBuffer[ThreadIds.X * 2 + 1];
 
-        int2 aIndex = new int2(aIndex1D % width, aIndex1D / width);
-        int2 bIndex = new int2(bIndex1D % width, bIndex1D / width);
+        int2 aIndex = new int2(getX(aIndex1D), getY(aIndex1D));
+        int2 bIndex = new int2(getX(bIndex1D), getY(bIndex1D));
 
         float4 a = texture[aIndex];
-        texture[aIndex] = texture[bIndex];
+        float4 b = texture[bIndex];
+
+        int score = 0;
+
+        //score -= getSelfPlusNeighborScore();
+        texture[aIndex] = b;
+        //score += getSelfPlusNeighborScore();
+
         texture[bIndex] = a;
+
+        // If swapping pixels `a` and `b` worsened the image, revert the swap
+        if (score > 0)
+        {
+            texture[aIndex] = a;
+            texture[bIndex] = b;
+        }
+    }
+
+    private int getX(int index)
+    {
+        return index % width;
+    }
+
+    private int getY(int index)
+    {
+        return index / width;
     }
 }
 
