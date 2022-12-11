@@ -33,9 +33,10 @@ internal class Program
         // TODO: Try using Rgb everywhere instead, to save bytes.
         pixels = new Rgba32[height, width];
 
-        //Console.WriteLine("Lab normalizing pixels...");
-        //LabNormalizePixels();
+        Console.WriteLine("Lab normalizing pixels...");
+        LabNormalizePixels();
 
+        /*
         for (int y = 0; y < img.Height; ++y)
         {
             for (int x = 0; x < img.Width; ++x)
@@ -44,6 +45,7 @@ internal class Program
                 pixels[y, x] = new Rgba32(pixel.R, pixel.G, pixel.B);
             }
         }
+        */
 
         Console.WriteLine("Allocating pixels GPU texture...");
         using var texture = GraphicsDevice.GetDefault().AllocateReadWriteTexture2D<Rgba32, float4>(pixels);
@@ -97,15 +99,15 @@ internal class Program
 
         //GraphicsDevice.GetDefault().For(texture.Width, texture.Height, new GrayscaleEffect(texture));
 
-        //Console.WriteLine("Lab denormalizing pixels...");
-        //pixels = texture.ToArray();
-        //LabDenormalizePixels();
-        //using var textureResult = GraphicsDevice.GetDefault().AllocateReadWriteTexture2D<Rgba32, float4>(pixels);
-        //Console.WriteLine("Saving result...");
-        //textureResult.Save(Path.Combine(OUTPUT_IMAGES_DIRECTORY_PATH, "1.png"));
+        Console.WriteLine("Lab denormalizing pixels...");
+        pixels = texture.ToArray();
+        LabDenormalizePixels();
+        using var textureResult = GraphicsDevice.GetDefault().AllocateReadWriteTexture2D<Rgba32, float4>(pixels);
+        Console.WriteLine("Saving result...");
+        textureResult.Save(Path.Combine(OUTPUT_IMAGES_DIRECTORY_PATH, "1.png"));
 
         //Console.WriteLine("Saving result...");
-        texture.Save(Path.Combine(OUTPUT_IMAGES_DIRECTORY_PATH, "1.png"));
+        //texture.Save(Path.Combine(OUTPUT_IMAGES_DIRECTORY_PATH, "1.png"));
 
     }
 
