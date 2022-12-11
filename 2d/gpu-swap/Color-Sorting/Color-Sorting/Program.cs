@@ -8,7 +8,8 @@ internal class Program
     //const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/cat.jpg";
 
     //const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/palette.bmp";
-    const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/10x10_palette.bmp";
+    //const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/10x10_palette.bmp";
+    const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/rainbow.png";
 
     const string OUTPUT_IMAGES_DIRECTORY_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting";
 
@@ -40,7 +41,7 @@ internal class Program
         Console.WriteLine("Allocating pixels GPU texture...");
         using var texture = GraphicsDevice.GetDefault().AllocateReadWriteTexture2D<Rgba32, float4>(pixels);
 
-        /*
+
         var positions = Enumerable.Range(0, width * height).ToList();
 
         var available = positions.ToList();
@@ -50,11 +51,11 @@ internal class Program
 
         var rnd = new Random();
 
-        Console.Clear();
-        PrintGrid(positions, availableCount, width, height);
+        //Console.Clear();
+        //PrintGrid(positions, availableCount, width, height);
         while (availableCount > 0)
         {
-            Thread.Sleep(500);
+            //Thread.Sleep(500);
 
             var availableIndex = available[rnd.Next(availableCount)];
             availableIndices.Add(availableIndex);
@@ -62,25 +63,24 @@ internal class Program
             //availableCount = MarkUnavailable(index, available, positions, availableCount);
             availableCount = MarkNeighborsAndSelfUnavailable(availableIndex, available, positions, availableCount, width, height);
 
-            Console.Clear();
-            Console.WriteLine(availableIndex.ToString("D2"));
-            Console.WriteLine(availableCount);
-            PrintGrid(positions, availableCount, width, height);
+            //Console.Clear();
+            //Console.WriteLine(availableIndex.ToString("D2"));
+            //Console.WriteLine(availableCount);
+            //PrintGrid(positions, availableCount, width, height);
         }
 
-        availableIndices.ForEach(Console.WriteLine);
-        */
+        //availableIndices.ForEach(Console.WriteLine);
 
 
         // If `availableIndices` is `[ A, B, C ]`, then `[ A, B ]` is the only pair of indices that will be swapped
-        // Using availableIndices[ThreadIds.X * 2] and availableIndices[ThreadIds.X * 2 + 1]
-        //GraphicsDevice.GetDefault().For((int)(availableIndices.Count / 2), new Foo(availableIndices, img));
+        using var availableIndicesBuffer = GraphicsDevice.GetDefault().AllocateReadOnlyBuffer(availableIndices.ToArray());
+        GraphicsDevice.GetDefault().For((int)(availableIndices.Count / 2), new SwapComputeShader(availableIndicesBuffer, texture, width));
 
 
         //using var texture = GraphicsDevice.GetDefault().AllocateReadWriteBuffer(pixels.ToArray());
         //using var texture = GraphicsDevice.GetDefault().LoadReadWriteTexture2D<Rgba32, float4>("I:/Programming/Color-Sorting/Color-Sorting/palette.bmp");
 
-        GraphicsDevice.GetDefault().For(texture.Width, texture.Height, new GrayscaleEffect(texture));
+        //GraphicsDevice.GetDefault().For(texture.Width, texture.Height, new GrayscaleEffect(texture));
 
 
         Console.WriteLine("Saving result...");
@@ -306,7 +306,7 @@ internal class Program
             {
                 string jsonString = File.ReadAllText(LAB_INFO_JSON_FILE_PATH);
 
-                LabInformation deserializedLabInfo = JsonSerializer.Deserialize<LabInformation>(jsonString);
+                LabInformation deserializedLabInfo = JsonSerializer.Deserialize<LabInformation>(jsonString)!;
 
                 minL = deserializedLabInfo.minL;
                 minA = deserializedLabInfo.minA;
@@ -370,6 +370,30 @@ internal class Program
 }
 
 [AutoConstructor]
+public readonly partial struct SwapComputeShader : IComputeShader
+{
+    public readonly ReadOnlyBuffer<int> availableIndicesBuffer;
+
+    public readonly IReadWriteNormalizedTexture2D<float4> texture;
+
+    public readonly int width;
+
+    public void Execute()
+    {
+        int aIndex1D = availableIndicesBuffer[ThreadIds.X * 2 + 0];
+        int bIndex1D = availableIndicesBuffer[ThreadIds.X * 2 + 1];
+
+        int2 aIndex = new int2(aIndex1D % width, (int)(aIndex1D / width));
+        int2 bIndex = new int2(bIndex1D % width, (int)(bIndex1D / width));
+
+        float4 a = texture[aIndex];
+        texture[aIndex] = texture[bIndex];
+        texture[bIndex] = a;
+    }
+}
+
+/*
+[AutoConstructor]
 public readonly partial struct GrayscaleEffect : IComputeShader
 {
     public readonly IReadWriteNormalizedTexture2D<float4> texture;
@@ -386,3 +410,4 @@ public readonly partial struct GrayscaleEffect : IComputeShader
         texture[ThreadIds.XY].RGB = avg;
     }
 }
+*/
