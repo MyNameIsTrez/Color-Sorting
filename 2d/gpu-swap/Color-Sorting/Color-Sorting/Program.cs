@@ -42,40 +42,44 @@ internal class Program
         using var texture = GraphicsDevice.GetDefault().AllocateReadWriteTexture2D<Rgba32, float4>(pixels);
 
 
-        var positions = Enumerable.Range(0, width * height).ToList();
-
-        var available = positions.ToList();
-        var availableCount = width * height;
-
-        var availableIndices = new List<int>();
-
         var rnd = new Random();
 
-        //Console.Clear();
-        //PrintGrid(positions, availableCount, width, height);
-        while (availableCount > 0)
+        var indicesList = Enumerable.Range(0, width * height).ToList();
+
+
+        for (int i = 0; i < 1; i++)
         {
-            //Thread.Sleep(500);
+            var availableCount = width * height;
 
-            var availableIndex = available[rnd.Next(availableCount)];
-            availableIndices.Add(availableIndex);
-
-            //availableCount = MarkUnavailable(index, available, positions, availableCount);
-            availableCount = MarkNeighborsAndSelfUnavailable(availableIndex, available, positions, availableCount, width, height);
+            var positions = indicesList.ToList();
+            var available = indicesList.ToList();
+            var availableIndices = new List<int>();
 
             //Console.Clear();
-            //Console.WriteLine(availableIndex.ToString("D2"));
-            //Console.WriteLine(availableCount);
             //PrintGrid(positions, availableCount, width, height);
+            while (availableCount > 0)
+            {
+                //Thread.Sleep(500);
+
+                var availableIndex = available[rnd.Next(availableCount)];
+                availableIndices.Add(availableIndex);
+
+                //availableCount = MarkUnavailable(index, available, positions, availableCount);
+                availableCount = MarkNeighborsAndSelfUnavailable(availableIndex, available, positions, availableCount, width, height);
+
+                //Console.Clear();
+                //Console.WriteLine(availableIndex.ToString("D2"));
+                //Console.WriteLine(availableCount);
+                //PrintGrid(positions, availableCount, width, height);
+            }
+
+            //availableIndices.ForEach(Console.WriteLine);
+
+
+            // If `availableIndices` is `[ A, B, C ]`, then `[ A, B ]` is the only pair of indices that will be swapped
+            using var availableIndicesBuffer = GraphicsDevice.GetDefault().AllocateReadOnlyBuffer(availableIndices.ToArray());
+            GraphicsDevice.GetDefault().For((int)(availableIndices.Count / 2), new SwapComputeShader(availableIndicesBuffer, texture, width));
         }
-
-        //availableIndices.ForEach(Console.WriteLine);
-
-
-        // If `availableIndices` is `[ A, B, C ]`, then `[ A, B ]` is the only pair of indices that will be swapped
-        using var availableIndicesBuffer = GraphicsDevice.GetDefault().AllocateReadOnlyBuffer(availableIndices.ToArray());
-        GraphicsDevice.GetDefault().For((int)(availableIndices.Count / 2), new SwapComputeShader(availableIndicesBuffer, texture, width));
-
 
         //using var texture = GraphicsDevice.GetDefault().AllocateReadWriteBuffer(pixels.ToArray());
         //using var texture = GraphicsDevice.GetDefault().LoadReadWriteTexture2D<Rgba32, float4>("I:/Programming/Color-Sorting/Color-Sorting/palette.bmp");
@@ -383,8 +387,8 @@ public readonly partial struct SwapComputeShader : IComputeShader
         int aIndex1D = availableIndicesBuffer[ThreadIds.X * 2 + 0];
         int bIndex1D = availableIndicesBuffer[ThreadIds.X * 2 + 1];
 
-        int2 aIndex = new int2(aIndex1D % width, (int)(aIndex1D / width));
-        int2 bIndex = new int2(bIndex1D % width, (int)(bIndex1D / width));
+        int2 aIndex = new int2(aIndex1D % width, aIndex1D / width);
+        int2 bIndex = new int2(bIndex1D % width, bIndex1D / width);
 
         float4 a = texture[aIndex];
         texture[aIndex] = texture[bIndex];
