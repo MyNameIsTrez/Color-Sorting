@@ -78,7 +78,7 @@ internal class Program
 
             // If `availableIndices` is `[ A, B, C ]`, then `[ A, B ]` is the only pair of indices that will be swapped
             using var availableIndicesBuffer = GraphicsDevice.GetDefault().AllocateReadOnlyBuffer(availableIndices.ToArray());
-            GraphicsDevice.GetDefault().For((int)(availableIndices.Count / 2), new SwapComputeShader(availableIndicesBuffer, texture, width));
+            GraphicsDevice.GetDefault().For((int)(availableIndices.Count / 2), new SwapComputeShader(availableIndicesBuffer, texture, width, height));
         }
 
         //using var texture = GraphicsDevice.GetDefault().AllocateReadWriteBuffer(pixels.ToArray());
@@ -381,6 +381,7 @@ public readonly partial struct SwapComputeShader : IComputeShader
     public readonly IReadWriteNormalizedTexture2D<float4> texture;
 
     public readonly int width;
+    public readonly int height;
 
     public void Execute()
     {
@@ -395,11 +396,13 @@ public readonly partial struct SwapComputeShader : IComputeShader
 
         int score = 0;
 
-        //score -= getSelfPlusNeighborScore();
+        score -= getSelfPlusNeighborScore(aIndex);
         texture[aIndex] = b;
-        //score += getSelfPlusNeighborScore();
+        score += getSelfPlusNeighborScore(aIndex);
 
+        score -= getSelfPlusNeighborScore(bIndex);
         texture[bIndex] = a;
+        score += getSelfPlusNeighborScore(bIndex);
 
         // If swapping pixels `a` and `b` worsened the image, revert the swap
         if (score > 0)
@@ -417,6 +420,59 @@ public readonly partial struct SwapComputeShader : IComputeShader
     private int getY(int index)
     {
         return index / width;
+    }
+
+    private int getSelfPlusNeighborScore(int2 index)
+    {
+        int score = 0;
+
+        for (int dy = -1; dy <= 1; dy++)
+        {
+            if (index.Y + dy == -1 || index.Y + dy == height)
+                continue;
+
+            for (int dx = -1; dx <= 1; dx++)
+            {
+                if (index.X + dx == -1 || index.X + dx == width)
+                    continue;
+
+                score += getScore(index + new int2(dx, dy));
+            }
+        }
+
+        return (score);
+    }
+
+    private int getScore(int2 centerIndex)
+    {
+        float4 centerPixel = texture[centerIndex];
+        int score = 0;
+
+        for (var dy = -1; dy <= 1; dy++)
+        {
+            if (centerIndex.Y + dy == -1 || centerIndex.Y + dy == height)
+                continue;
+
+            for (var dx = -1; dx <= 1; dx++)
+            {
+                // TODO: Is the check for itself with ` || (centerIndex.x + dx == 0 && centerIndex.Y + dy == 0)` really necessary?
+                if (centerIndex.X + dx == -1 || centerIndex.X + dx == width || (centerIndex.X + dx == 0 && centerIndex.Y + dy == 0))
+                    continue;
+
+                float4 neighborPixel = texture[centerIndex + new int2(dx, dy)];
+                score += getColorDifference(centerPixel, neighborPixel);
+            }
+        }
+
+        return score;
+    }
+
+    private int getColorDifference(float4 c1, float4 c2)
+    {
+        var l = c1.R - c2.R;
+        var a = c1.G - c2.G;
+        var b = c1.B - c2.B;
+        return (int)(l * l + a * a + b * b);
     }
 }
 
