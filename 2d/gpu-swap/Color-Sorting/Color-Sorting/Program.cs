@@ -33,11 +33,17 @@ internal class Program
         // TODO: Try using Rgb everywhere instead, to save bytes.
         pixels = new Rgba32[height, width];
 
-        Console.WriteLine("Lab normalizing pixels...");
-        LabNormalizePixels();
+        //Console.WriteLine("Lab normalizing pixels...");
+        //LabNormalizePixels();
 
-        Console.WriteLine("Lab denormalizing pixels...");
-        LabDenormalizePixels();
+        for (int y = 0; y < img.Height; ++y)
+        {
+            for (int x = 0; x < img.Width; ++x)
+            {
+                var pixel = img.GetPixel(x, y);
+                pixels[y, x] = new Rgba32(pixel.R, pixel.G, pixel.B);
+            }
+        }
 
         Console.WriteLine("Allocating pixels GPU texture...");
         using var texture = GraphicsDevice.GetDefault().AllocateReadWriteTexture2D<Rgba32, float4>(pixels);
@@ -48,50 +54,57 @@ internal class Program
         var indicesList = Enumerable.Range(0, width * height).ToList();
 
 
-        for (int i = 0; i < 1; i++)
-        {
-            /*
-            var availableCount = width * height;
+        //for (int i = 0; i < 1; i++)
+        //{
+        /*
+        var availableCount = width * height;
 
-            var positions = indicesList.ToList();
-            var available = indicesList.ToList();
-            var availableIndices = new List<int>();
+        var positions = indicesList.ToList();
+        var available = indicesList.ToList();
+        var availableIndices = new List<int>();
+
+        //Console.Clear();
+        //PrintGrid(positions, availableCount, width, height);
+        while (availableCount > 0)
+        {
+            //Thread.Sleep(500);
+
+            var availableIndex = available[rnd.Next(availableCount)];
+            availableIndices.Add(availableIndex);
+
+            //availableCount = MarkUnavailable(index, available, positions, availableCount);
+            availableCount = MarkNeighborsAndSelfUnavailable(availableIndex, available, positions, availableCount, width, height);
 
             //Console.Clear();
+            //Console.WriteLine(availableIndex.ToString("D2"));
+            //Console.WriteLine(availableCount);
             //PrintGrid(positions, availableCount, width, height);
-            while (availableCount > 0)
-            {
-                //Thread.Sleep(500);
-
-                var availableIndex = available[rnd.Next(availableCount)];
-                availableIndices.Add(availableIndex);
-
-                //availableCount = MarkUnavailable(index, available, positions, availableCount);
-                availableCount = MarkNeighborsAndSelfUnavailable(availableIndex, available, positions, availableCount, width, height);
-
-                //Console.Clear();
-                //Console.WriteLine(availableIndex.ToString("D2"));
-                //Console.WriteLine(availableCount);
-                //PrintGrid(positions, availableCount, width, height);
-            }
-            */
-
-            var availableIndices = new List<int> { 1, 2 };
-            //availableIndices.ForEach(Console.WriteLine);
-
-
-            // If `availableIndices` is `[ A, B, C ]`, then `[ A, B ]` is the only pair of indices that will be swapped
-            using var availableIndicesBuffer = GraphicsDevice.GetDefault().AllocateReadOnlyBuffer(availableIndices.ToArray());
-            GraphicsDevice.GetDefault().For((int)(availableIndices.Count / 2), new SwapComputeShader(availableIndicesBuffer, texture, width, height));
         }
+        */
+
+        var availableIndices = new List<int> { 1, 2 };
+        //availableIndices.ForEach(Console.WriteLine);
+
+
+        // If `availableIndices` is `[ A, B, C ]`, then `[ A, B ]` is the only pair of indices that will be swapped
+        using var availableIndicesBuffer = GraphicsDevice.GetDefault().AllocateReadOnlyBuffer(availableIndices.ToArray());
+        GraphicsDevice.GetDefault().For((int)(availableIndices.Count / 2), new SwapComputeShader(availableIndicesBuffer, texture, width, height));
+
+        //}
 
         //using var texture = GraphicsDevice.GetDefault().AllocateReadWriteBuffer(pixels.ToArray());
         //using var texture = GraphicsDevice.GetDefault().LoadReadWriteTexture2D<Rgba32, float4>("I:/Programming/Color-Sorting/Color-Sorting/palette.bmp");
 
         //GraphicsDevice.GetDefault().For(texture.Width, texture.Height, new GrayscaleEffect(texture));
 
+        //Console.WriteLine("Lab denormalizing pixels...");
+        //pixels = texture.ToArray();
+        //LabDenormalizePixels();
+        //using var textureResult = GraphicsDevice.GetDefault().AllocateReadWriteTexture2D<Rgba32, float4>(pixels);
+        //Console.WriteLine("Saving result...");
+        //textureResult.Save(Path.Combine(OUTPUT_IMAGES_DIRECTORY_PATH, "1.png"));
 
-        Console.WriteLine("Saving result...");
+        //Console.WriteLine("Saving result...");
         texture.Save(Path.Combine(OUTPUT_IMAGES_DIRECTORY_PATH, "1.png"));
 
     }
@@ -402,34 +415,55 @@ public readonly partial struct SwapComputeShader : IComputeShader
 
         int change;
 
+        /*
         change = getSelfPlusNeighborScore(aIndex);
-        texture[new int2(0, 2)] = new float4(change > 0 ? 1 : (change == 0 ? 0.5f : 0), 0, 0, 1);
         score -= change;
         texture[aIndex] = b;
         change = getSelfPlusNeighborScore(aIndex);
-        texture[new int2(0, 3)] = new float4(change > 0 ? 1 : (change == 0 ? 0.5f : 0), 0, 0, 1);
         score += change;
 
         change = getSelfPlusNeighborScore(bIndex);
-        texture[new int2(0, 4)] = new float4(change > 0 ? 1 : (change == 0 ? 0.5f : 0), 0, 0, 1);
         score -= change;
         texture[bIndex] = a;
         change = getSelfPlusNeighborScore(bIndex);
-        texture[new int2(0, 5)] = new float4(change > 0 ? 1 : (change == 0 ? 0.5f : 0), 0, 0, 1);
         score += change;
+        */
+
+        //texture[new int2(0, 3)] = new float4(aIndex.X / 256f, aIndex.Y / 256f, 0, 1);
+        //texture[new int2(0, 4)] = new float4(bIndex.X / 256f, bIndex.Y / 256f, 0, 1);
+
+        change = getSelfPlusNeighborScore(aIndex);
+        //texture[new int2(0, 3)] = new float4(change > 0 ? 1 : (change == 0 ? 0.5f : 0), change / 256f, 0, 1);
+
+
+        score -= change;
+        texture[aIndex] = b;
+        change = getSelfPlusNeighborScore(aIndex);
+        //texture[new int2(0, 4)] = new float4(change > 0 ? 1 : (change == 0 ? 0.5f : 0), 0, 0, 1);
+        score += change;
+
+        change = getSelfPlusNeighborScore(bIndex);
+        //texture[new int2(0, 5)] = new float4(change > 0 ? 1 : (change == 0 ? 0.5f : 0), 0, 0, 1);
+        score -= change;
+        texture[bIndex] = a;
+        change = getSelfPlusNeighborScore(bIndex);
+        //texture[new int2(0, 6)] = new float4(change > 0 ? 1 : (change == 0 ? 0.5f : 0), 0, 0, 1);
+        score += change;
+
 
         // If swapping pixels `a` and `b` worsened the image, revert the swap
         if (score > 0)
         {
-            texture[new int2(0, 6)] = new float4(1, 0, 0, 1);
+            texture[new int2(0, 15)] = new float4(1, 0, 0, 1);
 
             texture[aIndex] = a;
             texture[bIndex] = b;
         }
         else
         {
-            texture[new int2(0, 7)] = new float4(0, 1, 0, 1);
+            texture[new int2(0, 15)] = new float4(0, 1, 0, 1);
         }
+
     }
 
     private int getX(int index)
@@ -445,7 +479,9 @@ public readonly partial struct SwapComputeShader : IComputeShader
     private int getSelfPlusNeighborScore(int2 index)
     {
         int score = 0;
+        int additionalScore;
 
+        int i = 0;
         for (int dy = -1; dy <= 1; dy++)
         {
             if (index.Y + dy == -1 || index.Y + dy == height)
@@ -456,7 +492,11 @@ public readonly partial struct SwapComputeShader : IComputeShader
                 if (index.X + dx == -1 || index.X + dx == width)
                     continue;
 
-                score += getScore(index + new int2(dx, dy));
+                additionalScore = getScore(index + new int2(dx, dy));
+                score += additionalScore;
+                //texture[new int2(0, 3 + i)] = new float4((index.X + dx + (index.Y + dy) * width) / 256f, 0, 0, 1);
+                //texture[new int2(0, 3 + i)] = new float4(additionalScore / 256f, 0, 0, 1);
+                i++;
             }
         }
 
@@ -468,6 +508,7 @@ public readonly partial struct SwapComputeShader : IComputeShader
         float4 centerPixel = texture[centerIndex];
         int score = 0;
 
+        int i = 0;
         for (var dy = -1; dy <= 1; dy++)
         {
             if (centerIndex.Y + dy == -1 || centerIndex.Y + dy == height)
@@ -475,23 +516,35 @@ public readonly partial struct SwapComputeShader : IComputeShader
 
             for (var dx = -1; dx <= 1; dx++)
             {
-                // TODO: Is the check for itself with ` || (centerIndex.x + dx == 0 && centerIndex.Y + dy == 0)` really necessary?
-                if (centerIndex.X + dx == -1 || centerIndex.X + dx == width || (centerIndex.X + dx == 0 && centerIndex.Y + dy == 0))
+                // TODO: Is the check for itself with `(dx == 0 && dy == 0)` really necessary?
+                if (centerIndex.X + dx == -1 || centerIndex.X + dx == width || (dx == 0 && dy == 0))
                     continue;
 
+                //texture[new int2(0, 3 + i)] = new float4(dx / 256f, dy / 256f, 0, 1);
+
                 float4 neighborPixel = texture[centerIndex + new int2(dx, dy)];
-                score += getColorDifference(centerPixel, neighborPixel);
+                score += getColorDifference(centerPixel, neighborPixel, i);
+                i++;
             }
         }
 
         return score;
     }
 
-    private int getColorDifference(float4 c1, float4 c2)
+    private int getColorDifference(float4 c1, float4 c2, int i)
     {
-        var l = c1.R - c2.R;
-        var a = c1.G - c2.G;
-        var b = c1.B - c2.B;
+        var l = (c1.R * 255) - (c2.R * 255);
+        var a = (c1.G * 255) - (c2.G * 255);
+        var b = (c1.B * 255) - (c2.B * 255);
+
+        //texture[new int2(0, 3 + i)] = new float4(l / 255, 0, 0, 1);
+        //texture[new int2(1, 3 + i)] = new float4(a / 255, 0, 0, 1);
+        //texture[new int2(2, 3 + i)] = new float4(b / 255, 0, 0, 1);
+
+        //texture[new int2(0, 3 + i)] = new float4((l * l) / 255f, 0, 0, 1);
+        //texture[new int2(1, 3 + i)] = new float4((a * a) / 255f, 0, 0, 1);
+        //texture[new int2(2, 3 + i)] = new float4((b * b) / 255f, 0, 0, 1);
+
         return (int)(l * l + a * a + b * b);
     }
 }
