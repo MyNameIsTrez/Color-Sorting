@@ -9,7 +9,8 @@ internal class Program
 
     //const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/palette.bmp";
     //const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/10x10_palette.bmp";
-    const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/rainbow.png";
+    //const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/rainbow.png";
+    const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/shouldnt-swap.png";
 
     const string OUTPUT_IMAGES_DIRECTORY_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting";
 
@@ -49,6 +50,7 @@ internal class Program
 
         for (int i = 0; i < 1; i++)
         {
+            /*
             var availableCount = width * height;
 
             var positions = indicesList.ToList();
@@ -72,7 +74,9 @@ internal class Program
                 //Console.WriteLine(availableCount);
                 //PrintGrid(positions, availableCount, width, height);
             }
+            */
 
+            var availableIndices = new List<int> { 1, 2 };
             //availableIndices.ForEach(Console.WriteLine);
 
 
@@ -396,19 +400,35 @@ public readonly partial struct SwapComputeShader : IComputeShader
 
         int score = 0;
 
-        score -= getSelfPlusNeighborScore(aIndex);
-        texture[aIndex] = b;
-        score += getSelfPlusNeighborScore(aIndex);
+        int change;
 
-        score -= getSelfPlusNeighborScore(bIndex);
+        change = getSelfPlusNeighborScore(aIndex);
+        texture[new int2(0, 2)] = new float4(change > 0 ? 1 : (change == 0 ? 0.5f : 0), 0, 0, 1);
+        score -= change;
+        texture[aIndex] = b;
+        change = getSelfPlusNeighborScore(aIndex);
+        texture[new int2(0, 3)] = new float4(change > 0 ? 1 : (change == 0 ? 0.5f : 0), 0, 0, 1);
+        score += change;
+
+        change = getSelfPlusNeighborScore(bIndex);
+        texture[new int2(0, 4)] = new float4(change > 0 ? 1 : (change == 0 ? 0.5f : 0), 0, 0, 1);
+        score -= change;
         texture[bIndex] = a;
-        score += getSelfPlusNeighborScore(bIndex);
+        change = getSelfPlusNeighborScore(bIndex);
+        texture[new int2(0, 5)] = new float4(change > 0 ? 1 : (change == 0 ? 0.5f : 0), 0, 0, 1);
+        score += change;
 
         // If swapping pixels `a` and `b` worsened the image, revert the swap
         if (score > 0)
         {
+            texture[new int2(0, 6)] = new float4(1, 0, 0, 1);
+
             texture[aIndex] = a;
             texture[bIndex] = b;
+        }
+        else
+        {
+            texture[new int2(0, 7)] = new float4(0, 1, 0, 1);
         }
     }
 
