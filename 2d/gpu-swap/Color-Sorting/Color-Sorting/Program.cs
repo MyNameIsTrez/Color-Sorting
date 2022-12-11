@@ -5,12 +5,12 @@ using System.Text.Json;
 
 internal class Program
 {
-    //const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/cat.jpg";
+    const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/cat.jpg";
 
     //const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/palette.bmp";
     //const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/10x10_palette.bmp";
     //const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/rainbow.png";
-    const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/shouldnt-swap.png";
+    //const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/shouldnt-swap.png";
 
     const string OUTPUT_IMAGES_DIRECTORY_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting";
 
@@ -56,43 +56,42 @@ internal class Program
         var indicesList = Enumerable.Range(0, width * height).ToList();
 
 
-        //for (int i = 0; i < 1; i++)
-        //{
-        /*
-        var availableCount = width * height;
-
-        var positions = indicesList.ToList();
-        var available = indicesList.ToList();
-        var availableIndices = new List<int>();
-
-        //Console.Clear();
-        //PrintGrid(positions, availableCount, width, height);
-        while (availableCount > 0)
+        for (int i = 0; i < 10000; i++)
         {
-            //Thread.Sleep(500);
+            var availableCount = width * height;
 
-            var availableIndex = available[rnd.Next(availableCount)];
-            availableIndices.Add(availableIndex);
-
-            //availableCount = MarkUnavailable(index, available, positions, availableCount);
-            availableCount = MarkNeighborsAndSelfUnavailable(availableIndex, available, positions, availableCount, width, height);
+            var positions = indicesList.ToList();
+            var available = indicesList.ToList();
+            var availableIndices = new List<int>();
 
             //Console.Clear();
-            //Console.WriteLine(availableIndex.ToString("D2"));
-            //Console.WriteLine(availableCount);
             //PrintGrid(positions, availableCount, width, height);
+            while (availableCount > 0)
+            {
+                //Thread.Sleep(500);
+
+                var availableIndex = available[rnd.Next(availableCount)];
+                availableIndices.Add(availableIndex);
+
+                //availableCount = MarkUnavailable(index, available, positions, availableCount);
+                availableCount = MarkNeighborsAndSelfUnavailable(availableIndex, available, positions, availableCount, width, height);
+
+                //Console.Clear();
+                //Console.WriteLine(availableIndex.ToString("D2"));
+                //Console.WriteLine(availableCount);
+                //PrintGrid(positions, availableCount, width, height);
+            }
+
+
+            //var availableIndices = new List<int> { 1, 2 };
+            //availableIndices.ForEach(Console.WriteLine);
+
+
+            // If `availableIndices` is `[ A, B, C ]`, then `[ A, B ]` is the only pair of indices that will be swapped
+            using var availableIndicesBuffer = GraphicsDevice.GetDefault().AllocateReadOnlyBuffer(availableIndices.ToArray());
+            GraphicsDevice.GetDefault().For((int)(availableIndices.Count / 2), new SwapComputeShader(availableIndicesBuffer, texture, width, height));
+
         }
-        */
-
-        var availableIndices = new List<int> { 1, 2 };
-        //availableIndices.ForEach(Console.WriteLine);
-
-
-        // If `availableIndices` is `[ A, B, C ]`, then `[ A, B ]` is the only pair of indices that will be swapped
-        using var availableIndicesBuffer = GraphicsDevice.GetDefault().AllocateReadOnlyBuffer(availableIndices.ToArray());
-        GraphicsDevice.GetDefault().For((int)(availableIndices.Count / 2), new SwapComputeShader(availableIndicesBuffer, texture, width, height));
-
-        //}
 
         //using var texture = GraphicsDevice.GetDefault().AllocateReadWriteBuffer(pixels.ToArray());
         //using var texture = GraphicsDevice.GetDefault().LoadReadWriteTexture2D<Rgba32, float4>("I:/Programming/Color-Sorting/Color-Sorting/palette.bmp");
