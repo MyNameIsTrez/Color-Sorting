@@ -5,8 +5,11 @@ using System.Text.Json;
 
 internal class Program
 {
-    const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/cat.jpg";
+    const int ITERATIONS = 100;
 
+    const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/big-palette.png";
+
+    //const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/cat.jpg";
     //const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/palette.bmp";
     //const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/10x10_palette.bmp";
     //const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/rainbow.png";
@@ -36,6 +39,10 @@ internal class Program
         Console.WriteLine("Lab normalizing pixels...");
         LabNormalizePixels();
 
+        var rnd = new Random();
+        Console.WriteLine("Shuffling pixels...");
+        Shuffle(rnd, pixels);
+
         /*
         for (int y = 0; y < img.Height; ++y)
         {
@@ -51,13 +58,14 @@ internal class Program
         using var texture = GraphicsDevice.GetDefault().AllocateReadWriteTexture2D<Rgba32, float4>(pixels);
 
 
-        var rnd = new Random();
 
         var indicesList = Enumerable.Range(0, width * height).ToList();
 
 
-        for (int i = 0; i < 10000; i++)
+        for (int i = 0; i < ITERATIONS; i++)
         {
+            Console.Write("\rIteration {0}/{1}...", i + 1, ITERATIONS);
+
             var availableCount = width * height;
 
             var positions = indicesList.ToList();
@@ -93,6 +101,8 @@ internal class Program
 
         }
 
+        Console.Write("\n");
+
         //using var texture = GraphicsDevice.GetDefault().AllocateReadWriteBuffer(pixels.ToArray());
         //using var texture = GraphicsDevice.GetDefault().LoadReadWriteTexture2D<Rgba32, float4>("I:/Programming/Color-Sorting/Color-Sorting/palette.bmp");
 
@@ -108,6 +118,26 @@ internal class Program
         //Console.WriteLine("Saving result...");
         //texture.Save(Path.Combine(OUTPUT_IMAGES_DIRECTORY_PATH, "1.png"));
 
+    }
+
+    // Fisher-Yates algorithm implementatio source: https://stackoverflow.com/a/30164383/13279557
+    public static void Shuffle<T>(Random random, T[,] array)
+    {
+        int lengthRow = array.GetLength(1);
+
+        for (int i = array.Length - 1; i > 0; i--)
+        {
+            int i0 = i / lengthRow;
+            int i1 = i % lengthRow;
+
+            int j = random.Next(i + 1);
+            int j0 = j / lengthRow;
+            int j1 = j % lengthRow;
+
+            T temp = array[i0, i1];
+            array[i0, i1] = array[j0, j1];
+            array[j0, j1] = temp;
+        }
     }
 
     /*
