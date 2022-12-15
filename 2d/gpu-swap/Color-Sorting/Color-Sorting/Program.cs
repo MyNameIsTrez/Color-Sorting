@@ -6,6 +6,7 @@ using System.Text.Json;
 internal class Program
 {
     const int ITERATIONS = 100;
+    const bool SHUFFLE = true;
 
     const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/big-palette.png";
 
@@ -40,8 +41,12 @@ internal class Program
         LabNormalizePixels();
 
         var rnd = new Random();
-        Console.WriteLine("Shuffling pixels...");
-        Shuffle(rnd, pixels);
+
+        if (SHUFFLE)
+        {
+            Console.WriteLine("Shuffling pixels...");
+            Shuffle(rnd, pixels);
+        }
 
         /*
         for (int y = 0; y < img.Height; ++y)
