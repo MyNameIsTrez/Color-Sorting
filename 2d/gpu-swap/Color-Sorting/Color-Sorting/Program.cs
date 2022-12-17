@@ -93,21 +93,20 @@ internal class Program
 
         int pairCount = indicesList.Count / 2;
 
-        //var indices = indicesList;
+        var indices = indicesList;
 
-        using var indicesBuffer = GraphicsDevice.GetDefault().AllocateReadWriteBuffer(indicesList.ToArray());
+        //using var indicesBuffer = GraphicsDevice.GetDefault().AllocateReadWriteBuffer(indicesList.ToArray());
 
         for (int i = 0; i < ITERATIONS; i++)
         {
             Console.Write("\rIteration {0}/{1}...", i + 1, ITERATIONS);
 
-            //var indices = indicesList.ToList();
-            //indices.Shuffle2();
+            indices = indicesList.ToList();
+            indices.Shuffle2();
 
-            //using var indicesBuffer = GraphicsDevice.GetDefault().AllocateReadOnlyBuffer(indices.ToArray());
-            //GraphicsDevice.GetDefault().For(pairCount, new SwapComputeShader(indicesBuffer, texture, width, height));
+            using var indicesBuffer = GraphicsDevice.GetDefault().AllocateReadWriteBuffer(indices.ToArray());
 
-            GraphicsDevice.GetDefault().For(1, new SwapComputeShader(indicesBuffer, (uint)(width * height), (uint)rnd.Next(1_000_000)));
+            GraphicsDevice.GetDefault().For(pairCount, new SwapComputeShader(indicesBuffer, texture, width));
         }
 
         //indices.ForEach(Console.WriteLine);
@@ -436,117 +435,25 @@ internal class Program
 [AutoConstructor]
 public readonly partial struct SwapComputeShader : IComputeShader
 {
-    public readonly ReadWriteBuffer<int> indicesBuffer;
+    public readonly ReadWriteBuffer<int> indices;
 
-    public readonly uint indexCount;
+    public readonly IReadWriteNormalizedTexture2D<float4> texture;
 
-    public readonly uint inputSeed;
+    public readonly int width;
 
     public void Execute()
     {
-        uint seed = inputSeed;
-        uint n = indexCount;
-        while (n > 1)
-        {
-            n--;
-            seed = pcg_hash(seed);
-            uint k = seed % (n + 1); //rng.Next(n + 1);
-            int value = indicesBuffer[(int)k];
-            indicesBuffer[(int)k] = indicesBuffer[(int)n];
-            indicesBuffer[(int)n] = value;
-        }
+        int i = indices[ThreadIds.X * 2 + 0];
+        int j = indices[ThreadIds.X * 2 + 1];
+
+        int ix = i % width;
+        int iy = i / width;
+
+        int jx = j % width;
+        int jy = j / width;
+
+        float4 temp = texture[ix, iy];
+        texture[ix, iy] = texture[jx, jy];
+        texture[jx, jy] = temp;
     }
-
-    // TODO: I may have completely destroyed the randomness by replacing the unsigned qualifier with signed.
-    // Source for the original version: https://www.reedbeta.com/blog/hash-functions-for-gpu-rendering/
-    uint pcg_hash(uint input)
-    {
-        uint state = input * 747796405u + 2891336453u;
-        uint word = ((state >> (int)((state >> 28) + 4)) ^ state) * 277803737u;
-        return (word >> 22) ^ word;
-    }
-
-    /*
-    private int getX(int index)
-    {
-        return index % width;
-    }
-
-    private int getY(int index)
-    {
-        return index / width;
-    }
-
-    private int getSelfPlusNeighborScore(int2 index)
-    {
-        int score = 0;
-        int additionalScore;
-
-        int i = 0;
-        for (int dy = -1; dy <= 1; dy++)
-        {
-            if (index.Y + dy == -1 || index.Y + dy == height)
-                continue;
-
-            for (int dx = -1; dx <= 1; dx++)
-            {
-                if (index.X + dx == -1 || index.X + dx == width)
-                    continue;
-
-                additionalScore = getScore(index + new int2(dx, dy));
-                score += additionalScore;
-                //texture[new int2(0, 3 + i)] = new float4((index.X + dx + (index.Y + dy) * width) / 256f, 0, 0, 1);
-                //texture[new int2(0, 3 + i)] = new float4(additionalScore / 256f, 0, 0, 1);
-                i++;
-            }
-        }
-
-        return (score);
-    }
-
-    private int getScore(int2 centerIndex)
-    {
-        float4 centerPixel = texture[centerIndex];
-        int score = 0;
-
-        int i = 0;
-        for (var dy = -1; dy <= 1; dy++)
-        {
-            if (centerIndex.Y + dy == -1 || centerIndex.Y + dy == height)
-                continue;
-
-            for (var dx = -1; dx <= 1; dx++)
-            {
-                // TODO: Is the check for itself with `(dx == 0 && dy == 0)` really necessary?
-                if (centerIndex.X + dx == -1 || centerIndex.X + dx == width || (dx == 0 && dy == 0))
-                    continue;
-
-                //texture[new int2(0, 3 + i)] = new float4(dx / 256f, dy / 256f, 0, 1);
-
-                float4 neighborPixel = texture[centerIndex + new int2(dx, dy)];
-                score += getColorDifference(centerPixel, neighborPixel, i);
-                i++;
-            }
-        }
-
-        return score;
-    }
-
-    private int getColorDifference(float4 c1, float4 c2, int i)
-    {
-        var l = (c1.R * 255) - (c2.R * 255);
-        var a = (c1.G * 255) - (c2.G * 255);
-        var b = (c1.B * 255) - (c2.B * 255);
-
-        //texture[new int2(0, 3 + i)] = new float4(l / 255, 0, 0, 1);
-        //texture[new int2(1, 3 + i)] = new float4(a / 255, 0, 0, 1);
-        //texture[new int2(2, 3 + i)] = new float4(b / 255, 0, 0, 1);
-
-        //texture[new int2(0, 3 + i)] = new float4((l * l) / 255f, 0, 0, 1);
-        //texture[new int2(1, 3 + i)] = new float4((a * a) / 255f, 0, 0, 1);
-        //texture[new int2(2, 3 + i)] = new float4((b * b) / 255f, 0, 0, 1);
-
-        return (int)(l * l + a * a + b * b);
-    }
-    */
 }
