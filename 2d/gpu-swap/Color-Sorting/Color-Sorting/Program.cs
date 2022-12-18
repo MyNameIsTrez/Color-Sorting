@@ -1,4 +1,4 @@
-using Colourful;
+﻿using Colourful;
 using ComputeSharp;
 using System.Diagnostics;
 using System.Drawing;
@@ -51,10 +51,6 @@ internal class Program
 
     private static void Main(string[] args)
     {
-        var timer = new Stopwatch();
-        timer.Start();
-
-
         img = new Bitmap(INPUT_IMAGE_PATH);
         var width = img.Width;
         var height = img.Height;
@@ -93,6 +89,9 @@ internal class Program
 
         //using var indicesBuffer = GraphicsDevice.GetDefault().AllocateReadWriteBuffer(indicesList.ToArray());
 
+        var timer = new Stopwatch();
+        timer.Start();
+
         for (int i = 0; i < ITERATIONS; i++)
         {
             Console.Write("\rIteration {0}/{1}...", i + 1, ITERATIONS);
@@ -116,6 +115,9 @@ internal class Program
 
         Console.Write("\n");
 
+        timer.Stop();
+        Console.WriteLine("Iteration time taken: {0:%h} hours, {0:%m} minutes, {0:%s} seconds", timer.Elapsed);
+
         //using var texture = GraphicsDevice.GetDefault().AllocateReadWriteBuffer(pixels.ToArray());
         //using var texture = GraphicsDevice.GetDefault().LoadReadWriteTexture2D<Rgba32, float4>("I:/Programming/Color-Sorting/Color-Sorting/palette.bmp");
 
@@ -136,9 +138,6 @@ internal class Program
 
         //Console.WriteLine("Saving result...");
         //texture.Save(Path.Combine(OUTPUT_IMAGES_DIRECTORY_PATH, "1.png"));
-
-        timer.Stop();
-        Console.WriteLine("Time taken: {0:%h} hours, {0:%m} minutes, {0:%s} seconds", timer.Elapsed);
     }
 
     /*
