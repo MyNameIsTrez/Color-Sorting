@@ -82,35 +82,38 @@ internal class Program
         using var readTexture = GraphicsDevice.GetDefault().AllocateReadOnlyTexture2D<Rgba32, float4>(pixels);
         using var writeTexture = GraphicsDevice.GetDefault().AllocateReadWriteTexture2D<Rgba32, float4>(pixels);
 
-        for (int i = 0; i < ITERATIONS; i++)
+        using (var context = GraphicsDevice.GetDefault().CreateComputeContext())
         {
-            Console.Write("\rIteration {0}/{1}...", i + 1, ITERATIONS);
+            for (int i = 0; i < ITERATIONS; i++)
+            {
+                Console.Write("\rIteration {0}/{1}...", i + 1, ITERATIONS);
 
-            //var c = new Stopwatch();
-            //c.Start();
+                //var c = new Stopwatch();
+                //c.Start();
 
-            var a = new Stopwatch();
-            a.Start();
-            indicesList.Shuffle();
+                var a = new Stopwatch();
+                a.Start();
+                indicesList.Shuffle();
 
-            // TODO: Try turning indicesList into indicesArray
-            indicesBuffer.CopyFrom(indicesList.ToArray());
+                // TODO: Try turning indicesList into indicesArray
+                indicesBuffer.CopyFrom(indicesList.ToArray());
 
-            a.Stop();
-            Console.WriteLine("{0} ticks shuffle", a.ElapsedTicks);
+                a.Stop();
+                Console.WriteLine("{0} ticks shuffle", a.ElapsedTicks);
 
-            readTexture.CopyFrom(pixels);
+                readTexture.CopyFrom(pixels);
 
-            var b = new Stopwatch();
-            b.Start();
-            GraphicsDevice.GetDefault().For(pairCount, new SwapComputeShader(indicesBuffer, readTexture, writeTexture, width, height));
+                var b = new Stopwatch();
+                b.Start();
+                context.For(pairCount, new SwapComputeShader(indicesBuffer, readTexture, writeTexture, width, height));
 
-            writeTexture.CopyTo(pixels);
-            b.Stop();
-            Console.WriteLine("{0} ticks shader", b.ElapsedTicks);
+                writeTexture.CopyTo(pixels);
+                b.Stop();
+                Console.WriteLine("{0} ticks shader", b.ElapsedTicks);
 
-            //c.Stop();
-            //Console.WriteLine("{0} milliseconds per iteration", c.ElapsedMilliseconds);
+                //c.Stop();
+                //Console.WriteLine("{0} milliseconds per iteration", c.ElapsedMilliseconds);
+            }
         }
 
         Console.Write("\n");
@@ -440,6 +443,10 @@ public readonly partial struct SwapComputeShader : IComputeShader
             writeTexture[aIndex] = b;
             writeTexture[bIndex] = a;
         }
+
+        // TODO: Possibly faster:
+        //writeTexture[aIndex] = score < 0 ? b : a;
+        //writeTexture[bIndex] = score < 0 ? a : b;
     }
 
     private int getX(int index)
