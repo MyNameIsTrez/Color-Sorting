@@ -10,7 +10,7 @@ using System.Text.Json;
 // 2. Let the compute shader save the swap index pairs that'd improve the image. The swaps are array index 0 with index 1, index 2 with index 3, etc.
 // 3. Do the saved swaps.
 
-static public class Foo
+static public class ShuffleExtension
 {
     private static Random rng = new Random();
 
@@ -32,16 +32,18 @@ internal class Program
 {
     const int ITERATIONS = 1000;
 
-    //const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/new-1000.png";
-    const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/big-palette.png";
+    // TODO: Let the user specify a kernel matrix so pixels near the kernel edges don't count equally
+    const int KERNEL_RADIUS = 15;
 
+    //const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/ultra_20000.png";
+    const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/big_palette.png";
     //const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/cat.jpg";
     //const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/palette.bmp";
     //const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/10x10_palette.bmp";
     //const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/rainbow.png";
     //const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/shouldnt-swap.png";
 
-    const string OUTPUT_IMAGES_DIRECTORY_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting";
+    const string OUTPUT_IMAGES_DIRECTORY_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/output";
 
     const string LAB_INFO_JSON_FILE_PATH = "LabInfo.json";
 
@@ -86,8 +88,8 @@ internal class Program
         {
             Console.Write("\rIteration {0}/{1}...", i + 1, ITERATIONS);
 
-            //var c = new Stopwatch();
-            //c.Start();
+            var f = new Stopwatch();
+            f.Start();
 
             var a = new Stopwatch();
             a.Start();
@@ -106,24 +108,28 @@ internal class Program
             c.Start();
             readTexture.CopyFrom(pixels);
             c.Stop();
-            Console.WriteLine("{0} ticks copy pixels", c.ElapsedTicks);
+            Console.WriteLine("{0} ticks copy from pixels", c.ElapsedTicks);
 
             var d = new Stopwatch();
             d.Start();
-            GraphicsDevice.GetDefault().For(pairCount, new SwapComputeShader(indicesBuffer, readTexture, writeTexture, width, height));
-
-            writeTexture.CopyTo(pixels);
+            GraphicsDevice.GetDefault().For(pairCount, new SwapComputeShader(indicesBuffer, readTexture, writeTexture, width, height, KERNEL_RADIUS));
             d.Stop();
             Console.WriteLine("{0} ticks shader", d.ElapsedTicks);
 
-            //c.Stop();
-            //Console.WriteLine("{0} milliseconds per iteration", c.ElapsedMilliseconds);
+            var e = new Stopwatch();
+            e.Start();
+            writeTexture.CopyTo(pixels);
+            e.Stop();
+            Console.WriteLine("{0} ticks copy to pixels", e.ElapsedTicks);
+
+            f.Stop();
+            Console.WriteLine("{0} ticks per iteration", f.ElapsedTicks);
         }
 
         Console.Write("\n");
 
         timer.Stop();
-        Console.WriteLine("Iteration time taken: {0:%h} hours, {0:%m} minutes, {0:%s} seconds", timer.Elapsed);
+        Console.WriteLine("Iteration time: {0:%h} hours, {0:%m} minutes, {0:%s} seconds", timer.Elapsed);
 
         Console.WriteLine("Lab denormalizing pixels...");
 
@@ -131,148 +137,9 @@ internal class Program
 
         using var textureResult = GraphicsDevice.GetDefault().AllocateReadWriteTexture2D<Rgba32, float4>(pixels);
         Console.WriteLine("Saving result...");
-        textureResult.Save(Path.Combine(OUTPUT_IMAGES_DIRECTORY_PATH, "1.png"));
-    }
-
-    /*
-     * Prints this:
-     * +--+--+
-     * |00|01|
-     * |  |XX|
-     * +--+--+
-     * |02|03|
-     * |  |xx|
-     * +--+--+
-     */
-    private static void PrintGrid(List<int> positions, int availableCount, int width, int height)
-    {
-        for (var y = 0; y < height; ++y)
-        {
-            PrintHorizontalLine(width);
-
-            for (var x = 0; x < width; ++x)
-            {
-                var index = GetIndex(x, y, width);
-                Console.Write("|{0}", index.ToString("D2"));
-            }
-
-            Console.WriteLine("|");
-
-            for (var x = 0; x < width; ++x)
-            {
-                var index = GetIndex(x, y, width);
-                Console.Write("|{0}", IsAvailable(index, positions, availableCount) ? "  " : "XX");
-            }
-
-            Console.WriteLine("|");
-        }
-
-        PrintHorizontalLine(width);
-    }
-
-    /*
-     * Prints this:
-     * +--+--+
-     */
-    private static void PrintHorizontalLine(int width)
-    {
-        for (var x = 0; x < width; ++x)
-        {
-            Console.Write("+--");
-        }
-
-        Console.WriteLine("+");
-    }
-
-    private static void PrintAvailable(List<int> available, int availableCount)
-    {
-        Console.Write(String.Format("available: [ {0} ", String.Join(", ", available.Take(availableCount))));
-        Console.WriteLine(String.Format("| {0} ]", String.Join(", ", available.Skip(availableCount))));
-    }
-
-    private static void PrintPositions(List<int> positions)
-    {
-        Console.WriteLine(String.Format("positions: [ {0} ]", String.Join(", ", positions)));
-    }
-
-    private static int MarkNeighborsAndSelfUnavailable(int availableIndex, List<int> available, List<int> positions, int availableCount, int width, int height)
-    {
-        int x = availableIndex % width;
-        int y = (int)(availableIndex / width);
-
-        // TODO: Figure out whether a 5x5 is *really* necessary, or whether I could get away with a 3x3 everywhere
-        for (int dy = -2; dy <= 2; ++dy)
-        {
-            if (y + dy < 0 || y + dy >= height)
-                continue;
-            for (int dx = -2; dx <= 2; ++dx)
-            {
-                if (x + dx < 0 || x + dx >= width)
-                    continue;
-                int neighborOrOwnIndex = GetIndex(x + dx, y + dy, width);
-                availableCount = MarkUnavailable(neighborOrOwnIndex, available, positions, availableCount);
-            }
-        }
-
-        return availableCount;
-    }
-
-    private static int GetIndex(int x, int y, int width)
-    {
-        return x + y * width;
-    }
-
-    /*
-     * Example usage of this function:
-     * Whatever is to the right of the | in these lists is "unavailable" due to availableCount
-     * 
-     * availableCount = 4
-     * available = [ 0, 1, 2, 3 | ]
-     * positions = [ 0, 1, 2, 3 ]
-     * 
-     * MarkUnavailable(2)
-     * available == [ 0, 1, 3, | 2 ]
-     * positions == [ 0, 1, 3, 2 ]
-     * availableCount == 3
-     * 
-     * MarkUnavailable(2) // Nothing happens since this index was already removed, because `positions[2] < availableCount` -> `3 < 3` -> `false`
-     * available == [ 0, 1, 3, | 2 ]
-     * positions == [ 0, 1, 3, 2 ]
-     * availableCount == 3
-     * 
-     * MarkUnavailable(0)
-     * available == [ 3, 1, | 0, 2 ] 
-     * positions == [ 2, 1, 3, 0 ] // Note how you still need the "available" list since the 2 and 0 swapping here makes no sense otherwise
-     * availableCount == 2
-     */
-    private static int MarkUnavailable(int index, List<int> available, List<int> positions, int availableCount)
-    {
-        if (IsAvailable(index, positions, availableCount))
-        {
-            var availableIndex = positions[index];
-
-            var a = available[availableIndex];
-            var b = available[availableCount - 1];
-
-            available[availableIndex] = b;
-            available[availableCount - 1] = a;
-
-            positions[index] = availableCount - 1;
-            positions[b] = availableIndex;
-
-            --availableCount;
-        }
-
-        return availableCount;
-    }
-
-    /*
-     * See the MarkUnavailable() example in its documentation.
-     */
-    private static bool IsAvailable(int index, List<int> positions, int availableCount)
-    {
-        var availableIndex = positions[index];
-        return availableIndex < availableCount;
+        Directory.CreateDirectory(OUTPUT_IMAGES_DIRECTORY_PATH);
+        var filename = String.Format("{0}_r{1}_i{2}_t{3}.png", Path.GetFileNameWithoutExtension(INPUT_IMAGE_PATH), KERNEL_RADIUS, ITERATIONS, DateTimeOffset.Now.ToUnixTimeSeconds());
+        textureResult.Save(Path.Combine(OUTPUT_IMAGES_DIRECTORY_PATH, filename));
     }
 
     private static void LabNormalizePixels()
@@ -428,6 +295,8 @@ public readonly partial struct SwapComputeShader : IComputeShader
     public readonly int width;
     public readonly int height;
 
+    public readonly int KERNEL_RADIUS;
+
     public void Execute()
     {
         int aIndex1D = indices[ThreadIds.X * 2 + 0];
@@ -468,12 +337,12 @@ public readonly partial struct SwapComputeShader : IComputeShader
         int score = 0;
 
         // Profile replacing these for- and if-statements with a top/bottom/left/right for-loop
-        for (int dy = -1; dy <= 1; dy++)
+        for (int dy = -KERNEL_RADIUS; dy <= KERNEL_RADIUS; dy++)
         {
             if (centerIndex.Y + dy == -1 || centerIndex.Y + dy == height)
                 continue;
 
-            for (int dx = -1; dx <= 1; dx++)
+            for (int dx = -KERNEL_RADIUS; dx <= KERNEL_RADIUS; dx++)
             {
                 if (centerIndex.X + dx == -1 || centerIndex.X + dx == width || (dx == 0 && dy == 0))
                     continue;
