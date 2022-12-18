@@ -67,17 +67,6 @@ internal class Program
 
         var rnd = new Random();
 
-        /*
-        for (int y = 0; y < img.Height; ++y)
-        {
-            for (int x = 0; x < img.Width; ++x)
-            {
-                var pixel = img.GetPixel(x, y);
-                pixels[y, x] = new Rgba32(pixel.R, pixel.G, pixel.B);
-            }
-        }
-        */
-
         Console.WriteLine("Allocating pixels GPU texture...");
         using var texture = GraphicsDevice.GetDefault().AllocateReadWriteTexture2D<Rgba32, float4>(pixels);
 
@@ -86,8 +75,6 @@ internal class Program
         int pairCount = indicesList.Count / 2;
 
         var indices = indicesList;
-
-        //using var indicesBuffer = GraphicsDevice.GetDefault().AllocateReadWriteBuffer(indicesList.ToArray());
 
         var timer = new Stopwatch();
         timer.Start();
@@ -101,14 +88,12 @@ internal class Program
 
             using var indicesBuffer = GraphicsDevice.GetDefault().AllocateReadWriteBuffer(indices.ToArray());
 
-            //using var readTexture = GraphicsDevice.GetDefault().AllocateReadOnlyTexture2D<Rgba32, float4>(pixels);
-            //using var writeTexture = GraphicsDevice.GetDefault().AllocateReadWriteTexture2D<Rgba32, float4>(pixels);
+            using var readTexture = GraphicsDevice.GetDefault().AllocateReadOnlyTexture2D<Rgba32, float4>(pixels);
+            using var writeTexture = GraphicsDevice.GetDefault().AllocateReadWriteTexture2D<Rgba32, float4>(pixels);
 
-            //GraphicsDevice.GetDefault().For(pairCount, new SwapComputeShader(indicesBuffer, readTexture, writeTexture, width, height));
+            GraphicsDevice.GetDefault().For(pairCount, new SwapComputeShader(indicesBuffer, readTexture, writeTexture, width, height));
 
-            GraphicsDevice.GetDefault().For(pairCount, new SwapComputeShader(indicesBuffer, texture, width, height));
-
-            //pixels = writeTexture.ToArray();
+            pixels = writeTexture.ToArray();
         }
 
         //indices.ForEach(Console.WriteLine);
@@ -118,26 +103,13 @@ internal class Program
         timer.Stop();
         Console.WriteLine("Iteration time taken: {0:%h} hours, {0:%m} minutes, {0:%s} seconds", timer.Elapsed);
 
-        //using var texture = GraphicsDevice.GetDefault().AllocateReadWriteBuffer(pixels.ToArray());
-        //using var texture = GraphicsDevice.GetDefault().LoadReadWriteTexture2D<Rgba32, float4>("I:/Programming/Color-Sorting/Color-Sorting/palette.bmp");
-
-        //GraphicsDevice.GetDefault().For(texture.Width, texture.Height, new GrayscaleEffect(texture));
-
         Console.WriteLine("Lab denormalizing pixels...");
 
-
-
-        pixels = texture.ToArray(); // TODO: REMOVE ONCE TEXTURE IS SPLIT UP INTO READ AND WRITE TEXTURES!
-
-
-
         LabDenormalizePixels();
+
         using var textureResult = GraphicsDevice.GetDefault().AllocateReadWriteTexture2D<Rgba32, float4>(pixels);
         Console.WriteLine("Saving result...");
         textureResult.Save(Path.Combine(OUTPUT_IMAGES_DIRECTORY_PATH, "1.png"));
-
-        //Console.WriteLine("Saving result...");
-        //texture.Save(Path.Combine(OUTPUT_IMAGES_DIRECTORY_PATH, "1.png"));
     }
 
     /*
@@ -427,10 +399,8 @@ public readonly partial struct SwapComputeShader : IComputeShader
 {
     public readonly ReadWriteBuffer<int> indices;
 
-    public readonly IReadWriteNormalizedTexture2D<float4> texture;
-
-    //public readonly IReadOnlyNormalizedTexture2D<float4> readTexture;
-    //public readonly IReadWriteNormalizedTexture2D<float4> writeTexture;
+    public readonly IReadOnlyNormalizedTexture2D<float4> readTexture;
+    public readonly IReadWriteNormalizedTexture2D<float4> writeTexture;
 
     public readonly int width;
 
@@ -444,37 +414,22 @@ public readonly partial struct SwapComputeShader : IComputeShader
         int2 aIndex = new int2(getX(aIndex1D), getY(aIndex1D));
         int2 bIndex = new int2(getX(bIndex1D), getY(bIndex1D));
 
-        //float4 a = readTexture[aIndex];
-        //float4 b = readTexture[bIndex];
-
-        float4 a = texture[aIndex];
-        float4 b = texture[bIndex];
+        float4 a = readTexture[aIndex];
+        float4 b = readTexture[bIndex];
 
         int score = 0;
 
-        int change;
+        score -= getSelfPlusNeighborScore(aIndex, a);
+        score += getSelfPlusNeighborScore(aIndex, b);
 
+        score -= getSelfPlusNeighborScore(bIndex, b);
+        score += getSelfPlusNeighborScore(bIndex, a);
 
-        change = getSelfPlusNeighborScore(aIndex);
-        score -= change;
-        texture[aIndex] = b; // TODO: In order to make writes way less likely, rewrite getSelfPlusNeighborScore() so it doesn't require texture writes
-        change = getSelfPlusNeighborScore(aIndex);
-        score += change;
-
-        change = getSelfPlusNeighborScore(bIndex);
-        score -= change;
-        texture[bIndex] = a;
-        change = getSelfPlusNeighborScore(bIndex);
-        score += change;
-
-
-        // If swapping pixels `a` and `b` worsened the image, revert the swap
-        if (score > 0)
+        // If swapping pixels `a` and `b` would improve the image, do the swap
+        if (score < 0)
         {
-            //writeTexture[aIndex] = a;
-            //writeTexture[bIndex] = b;
-            texture[aIndex] = a;
-            texture[bIndex] = b;
+            writeTexture[aIndex] = b;
+            writeTexture[bIndex] = a;
         }
     }
 
@@ -488,29 +443,23 @@ public readonly partial struct SwapComputeShader : IComputeShader
         return index / width;
     }
 
-    private int getSelfPlusNeighborScore(int2 index)
+    private int getSelfPlusNeighborScore(int2 centerIndex, float4 centerPixel)
     {
         int score = 0;
-        int additionalScore;
 
-        float4 centerPixel = texture[index];
-
-        // TODO: Rewrite this function so it doesn't run getColorDifference() 81 times
         for (int dy = -1; dy <= 1; dy++)
         {
-            if (index.Y + dy == -1 || index.Y + dy == height)
+            if (centerIndex.Y + dy == -1 || centerIndex.Y + dy == height)
                 continue;
 
             for (int dx = -1; dx <= 1; dx++)
             {
-                // TODO: Is the check for itself with `(dx == 0 && dy == 0)` really necessary?
-                if (index.X + dx == -1 || index.X + dx == width || (dx == 0 && dy == 0))
+                if (centerIndex.X + dx == -1 || centerIndex.X + dx == width || (dx == 0 && dy == 0))
                     continue;
 
-                int2 neighborIndex = index + new int2(dx, dy);
-                float4 neighborPixel = texture[neighborIndex];
+                int2 neighborIndex = centerIndex + new int2(dx, dy);
+                float4 neighborPixel = readTexture[neighborIndex];
 
-                //score += additionalScore;
                 score += getColorDifference(centerPixel, neighborPixel);
             }
         }
