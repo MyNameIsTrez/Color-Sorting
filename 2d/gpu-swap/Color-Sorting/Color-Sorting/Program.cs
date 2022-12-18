@@ -1,4 +1,4 @@
-﻿using Colourful;
+using Colourful;
 using ComputeSharp;
 using System.Diagnostics;
 using System.Drawing;
@@ -74,29 +74,38 @@ internal class Program
 
         int pairCount = indicesList.Count / 2;
 
-        var indices = indicesList;
-
         var timer = new Stopwatch();
         timer.Start();
+
+        using var indicesBuffer = GraphicsDevice.GetDefault().AllocateReadWriteBuffer(indicesList.ToArray());
+
+        using var readTexture = GraphicsDevice.GetDefault().AllocateReadOnlyTexture2D<Rgba32, float4>(pixels);
+        using var writeTexture = GraphicsDevice.GetDefault().AllocateReadWriteTexture2D<Rgba32, float4>(pixels);
 
         for (int i = 0; i < ITERATIONS; i++)
         {
             Console.Write("\rIteration {0}/{1}...", i + 1, ITERATIONS);
 
-            indices = indicesList.ToList();
-            indices.Shuffle();
+            //var a = new Stopwatch();
+            //a.Start();
+            indicesList.Shuffle();
+            // TODO: Try turning indicesList into indicesArray
+            indicesBuffer.CopyFrom(indicesList.ToArray());
+            //a.Stop();
+            //Console.WriteLine("{0} milliseconds shuffle", a.ElapsedMilliseconds);
 
-            using var indicesBuffer = GraphicsDevice.GetDefault().AllocateReadWriteBuffer(indices.ToArray());
+            readTexture.CopyFrom(pixels);
 
-            using var readTexture = GraphicsDevice.GetDefault().AllocateReadOnlyTexture2D<Rgba32, float4>(pixels);
-            using var writeTexture = GraphicsDevice.GetDefault().AllocateReadWriteTexture2D<Rgba32, float4>(pixels);
-
+            //var b = new Stopwatch();
+            //b.Start();
             GraphicsDevice.GetDefault().For(pairCount, new SwapComputeShader(indicesBuffer, readTexture, writeTexture, width, height));
 
-            pixels = writeTexture.ToArray();
+            writeTexture.CopyTo(pixels);
+            //b.Stop();
+            //Console.WriteLine("{0} milliseconds shader", b.ElapsedMilliseconds);
+            //a.Stop();
+            //Console.WriteLine("{0} milliseconds per iteration", a.ElapsedMilliseconds);
         }
-
-        //indices.ForEach(Console.WriteLine);
 
         Console.Write("\n");
 
@@ -395,6 +404,7 @@ internal class Program
 }
 
 [AutoConstructor]
+// [EmbeddedBytecode(DispatchAxis.X)] // Doesn't seem to speed the program up
 public readonly partial struct SwapComputeShader : IComputeShader
 {
     public readonly ReadWriteBuffer<int> indices;
@@ -403,7 +413,6 @@ public readonly partial struct SwapComputeShader : IComputeShader
     public readonly IReadWriteNormalizedTexture2D<float4> writeTexture;
 
     public readonly int width;
-
     public readonly int height;
 
     public void Execute()
@@ -441,6 +450,7 @@ public readonly partial struct SwapComputeShader : IComputeShader
     {
         int score = 0;
 
+        // Profile replacing these for- and if-statements with a top/bottom/left/right for-loop
         for (int dy = -1; dy <= 1; dy++)
         {
             if (centerIndex.Y + dy == -1 || centerIndex.Y + dy == height)
