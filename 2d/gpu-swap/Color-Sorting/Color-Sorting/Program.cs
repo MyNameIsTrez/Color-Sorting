@@ -14,7 +14,7 @@ static public class Foo
 {
     private static Random rng = new Random();
 
-    public static void Shuffle2<T>(this IList<T> list)
+    public static void Shuffle<T>(this IList<T> list)
     {
         int n = list.Count;
         while (n > 1)
@@ -72,12 +72,6 @@ internal class Program
 
         var rnd = new Random();
 
-        if (SHUFFLE)
-        {
-            Console.WriteLine("Shuffling pixels...");
-            Shuffle(rnd, pixels);
-        }
-
         /*
         for (int y = 0; y < img.Height; ++y)
         {
@@ -105,7 +99,7 @@ internal class Program
             Console.Write("\rIteration {0}/{1}...", i + 1, ITERATIONS);
 
             indices = indicesList.ToList();
-            indices.Shuffle2();
+            indices.Shuffle();
 
             using var indicesBuffer = GraphicsDevice.GetDefault().AllocateReadWriteBuffer(indices.ToArray());
 
