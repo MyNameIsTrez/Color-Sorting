@@ -1,4 +1,4 @@
-﻿using Colourful;
+using Colourful;
 using ComputeSharp;
 using System.Diagnostics;
 using System.Drawing;
@@ -410,7 +410,7 @@ public readonly partial struct SwapComputeShader : IComputeShader
     {
         for (int nx = Hlsl.Max(centerIndex.X - KERNEL_RADIUS, 0); nx < centerIndex.X; nx++)
         {
-            int2 neighborIndex = new int2(nx, 0);
+            int2 neighborIndex = new int2(nx, centerIndex.Y);
             float4 neighborPixel = readTexture[neighborIndex];
 
             score -= getColorDifference(oldCenterPixel, neighborPixel);
@@ -425,7 +425,7 @@ public readonly partial struct SwapComputeShader : IComputeShader
         // If centerIndex.X is 2 and KERNEL_RADIUS is 2 and width is 3, then centerIndex.X + 1 is 3. min(3, 3 - 1) is 2, so nx starts at 2
         for (int nx = Hlsl.Min(centerIndex.X + 1, width - 1); nx < Hlsl.Min(centerIndex.X + KERNEL_RADIUS + 1, width); nx++)
         {
-            int2 neighborIndex = new int2(nx, 0);
+            int2 neighborIndex = new int2(nx, centerIndex.Y);
             float4 neighborPixel = readTexture[neighborIndex];
 
             score -= getColorDifference(oldCenterPixel, neighborPixel);
