@@ -86,25 +86,31 @@ internal class Program
         {
             Console.Write("\rIteration {0}/{1}...", i + 1, ITERATIONS);
 
-            //var a = new Stopwatch();
-            //a.Start();
+            //var c = new Stopwatch();
+            //c.Start();
+
+            var a = new Stopwatch();
+            a.Start();
             indicesList.Shuffle();
+
             // TODO: Try turning indicesList into indicesArray
             indicesBuffer.CopyFrom(indicesList.ToArray());
-            //a.Stop();
-            //Console.WriteLine("{0} milliseconds shuffle", a.ElapsedMilliseconds);
+
+            a.Stop();
+            Console.WriteLine("{0} ticks shuffle", a.ElapsedTicks);
 
             readTexture.CopyFrom(pixels);
 
-            //var b = new Stopwatch();
-            //b.Start();
+            var b = new Stopwatch();
+            b.Start();
             GraphicsDevice.GetDefault().For(pairCount, new SwapComputeShader(indicesBuffer, readTexture, writeTexture, width, height));
 
             writeTexture.CopyTo(pixels);
-            //b.Stop();
-            //Console.WriteLine("{0} milliseconds shader", b.ElapsedMilliseconds);
-            //a.Stop();
-            //Console.WriteLine("{0} milliseconds per iteration", a.ElapsedMilliseconds);
+            b.Stop();
+            Console.WriteLine("{0} ticks shader", b.ElapsedTicks);
+
+            //c.Stop();
+            //Console.WriteLine("{0} milliseconds per iteration", c.ElapsedMilliseconds);
         }
 
         Console.Write("\n");
