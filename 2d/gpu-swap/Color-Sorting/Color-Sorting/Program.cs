@@ -30,10 +30,9 @@ static public class Foo
 
 internal class Program
 {
-    const int ITERATIONS = 1000;
-    const bool SHUFFLE = false;
+    const int ITERATIONS = 100;
 
-    //const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/40000.png";
+    //const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/new-1000.png";
     const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/big-palette.png";
 
     //const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/cat.jpg";
@@ -103,7 +102,14 @@ internal class Program
 
             using var indicesBuffer = GraphicsDevice.GetDefault().AllocateReadWriteBuffer(indices.ToArray());
 
+            //using var readTexture = GraphicsDevice.GetDefault().AllocateReadOnlyTexture2D<Rgba32, float4>(pixels);
+            //using var writeTexture = GraphicsDevice.GetDefault().AllocateReadWriteTexture2D<Rgba32, float4>(pixels);
+
+            //GraphicsDevice.GetDefault().For(pairCount, new SwapComputeShader(indicesBuffer, readTexture, writeTexture, width, height));
+
             GraphicsDevice.GetDefault().For(pairCount, new SwapComputeShader(indicesBuffer, texture, width, height));
+
+            //pixels = writeTexture.ToArray();
         }
 
         //indices.ForEach(Console.WriteLine);
@@ -116,7 +122,13 @@ internal class Program
         //GraphicsDevice.GetDefault().For(texture.Width, texture.Height, new GrayscaleEffect(texture));
 
         Console.WriteLine("Lab denormalizing pixels...");
-        pixels = texture.ToArray();
+
+
+
+        pixels = texture.ToArray(); // TODO: REMOVE ONCE TEXTURE IS SPLIT UP INTO READ AND WRITE TEXTURES!
+
+
+
         LabDenormalizePixels();
         using var textureResult = GraphicsDevice.GetDefault().AllocateReadWriteTexture2D<Rgba32, float4>(pixels);
         Console.WriteLine("Saving result...");
@@ -418,6 +430,9 @@ public readonly partial struct SwapComputeShader : IComputeShader
 
     public readonly IReadWriteNormalizedTexture2D<float4> texture;
 
+    //public readonly IReadOnlyNormalizedTexture2D<float4> readTexture;
+    //public readonly IReadWriteNormalizedTexture2D<float4> writeTexture;
+
     public readonly int width;
 
     public readonly int height;
@@ -430,6 +445,9 @@ public readonly partial struct SwapComputeShader : IComputeShader
         int2 aIndex = new int2(getX(aIndex1D), getY(aIndex1D));
         int2 bIndex = new int2(getX(bIndex1D), getY(bIndex1D));
 
+        //float4 a = readTexture[aIndex];
+        //float4 b = readTexture[bIndex];
+
         float4 a = texture[aIndex];
         float4 b = texture[bIndex];
 
@@ -440,7 +458,7 @@ public readonly partial struct SwapComputeShader : IComputeShader
 
         change = getSelfPlusNeighborScore(aIndex);
         score -= change;
-        texture[aIndex] = b;
+        texture[aIndex] = b; // TODO: In order to make writes way less likely, rewrite getSelfPlusNeighborScore() so it doesn't require texture writes
         change = getSelfPlusNeighborScore(aIndex);
         score += change;
 
@@ -454,16 +472,11 @@ public readonly partial struct SwapComputeShader : IComputeShader
         // If swapping pixels `a` and `b` worsened the image, revert the swap
         if (score > 0)
         {
-            texture[new int2(0, 15)] = new float4(1, 0, 0, 1);
-
+            //writeTexture[aIndex] = a;
+            //writeTexture[bIndex] = b;
             texture[aIndex] = a;
             texture[bIndex] = b;
         }
-        else
-        {
-            texture[new int2(0, 15)] = new float4(0, 1, 0, 1);
-        }
-
     }
 
     private int getX(int index)
@@ -481,7 +494,9 @@ public readonly partial struct SwapComputeShader : IComputeShader
         int score = 0;
         int additionalScore;
 
-        int i = 0;
+        float4 centerPixel = texture[index];
+
+        // TODO: Rewrite this function so it doesn't run getColorDifference() 81 times
         for (int dy = -1; dy <= 1; dy++)
         {
             if (index.Y + dy == -1 || index.Y + dy == height)
@@ -489,45 +504,22 @@ public readonly partial struct SwapComputeShader : IComputeShader
 
             for (int dx = -1; dx <= 1; dx++)
             {
-                if (index.X + dx == -1 || index.X + dx == width)
+                // TODO: Is the check for itself with `(dx == 0 && dy == 0)` really necessary?
+                if (index.X + dx == -1 || index.X + dx == width || (dx == 0 && dy == 0))
                     continue;
 
-                additionalScore = getScore(index + new int2(dx, dy));
-                score += additionalScore;
-                i++;
+                int2 neighborIndex = index + new int2(dx, dy);
+                float4 neighborPixel = texture[neighborIndex];
+
+                //score += additionalScore;
+                score += getColorDifference(centerPixel, neighborPixel);
             }
         }
 
         return (score);
     }
 
-    private int getScore(int2 centerIndex)
-    {
-        float4 centerPixel = texture[centerIndex];
-        int score = 0;
-
-        int i = 0;
-        for (var dy = -1; dy <= 1; dy++)
-        {
-            if (centerIndex.Y + dy == -1 || centerIndex.Y + dy == height)
-                continue;
-
-            for (var dx = -1; dx <= 1; dx++)
-            {
-                // TODO: Is the check for itself with `(dx == 0 && dy == 0)` really necessary?
-                if (centerIndex.X + dx == -1 || centerIndex.X + dx == width || (dx == 0 && dy == 0))
-                    continue;
-
-                float4 neighborPixel = texture[centerIndex + new int2(dx, dy)];
-                score += getColorDifference(centerPixel, neighborPixel, i);
-                i++;
-            }
-        }
-
-        return score;
-    }
-
-    private int getColorDifference(float4 c1, float4 c2, int i)
+    private int getColorDifference(float4 c1, float4 c2)
     {
         var l = (c1.R * 255) - (c2.R * 255);
         var a = (c1.G * 255) - (c2.G * 255);
