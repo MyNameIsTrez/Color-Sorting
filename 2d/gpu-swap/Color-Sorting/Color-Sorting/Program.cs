@@ -1,5 +1,6 @@
-﻿using Colourful;
+using Colourful;
 using ComputeSharp;
+using System.Diagnostics;
 using System.Drawing;
 using System.Text.Json;
 
@@ -51,6 +52,10 @@ internal class Program
 
     private static void Main(string[] args)
     {
+        var timer = new Stopwatch();
+        timer.Start();
+
+
         img = new Bitmap(INPUT_IMAGE_PATH);
         var width = img.Width;
         var height = img.Height;
@@ -86,8 +91,6 @@ internal class Program
 
         Console.WriteLine("Allocating pixels GPU texture...");
         using var texture = GraphicsDevice.GetDefault().AllocateReadWriteTexture2D<Rgba32, float4>(pixels);
-
-
 
         var indicesList = Enumerable.Range(0, width * height).ToList();
 
@@ -128,26 +131,8 @@ internal class Program
         //Console.WriteLine("Saving result...");
         //texture.Save(Path.Combine(OUTPUT_IMAGES_DIRECTORY_PATH, "1.png"));
 
-    }
-
-    // Fisher-Yates algorithm implementatio source: https://stackoverflow.com/a/30164383/13279557
-    public static void Shuffle<T>(Random random, T[,] array)
-    {
-        int lengthRow = array.GetLength(1);
-
-        for (int i = array.Length - 1; i > 0; i--)
-        {
-            int i0 = i / lengthRow;
-            int i1 = i % lengthRow;
-
-            int j = random.Next(i + 1);
-            int j0 = j / lengthRow;
-            int j1 = j % lengthRow;
-
-            T temp = array[i0, i1];
-            array[i0, i1] = array[j0, j1];
-            array[j0, j1] = temp;
-        }
+        timer.Stop();
+        Console.WriteLine("Time taken: {0:%h} hours, {0:%m} minutes, {0:%s} seconds", timer.Elapsed);
     }
 
     /*
