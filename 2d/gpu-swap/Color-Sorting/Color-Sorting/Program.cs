@@ -417,13 +417,7 @@ public readonly partial struct SwapComputeShader : IComputeShader
         float4 a = readTexture[aIndex];
         float4 b = readTexture[bIndex];
 
-        int score = 0;
-
-        score -= getSelfPlusNeighborScore(aIndex, a);
-        score += getSelfPlusNeighborScore(aIndex, b);
-
-        score -= getSelfPlusNeighborScore(bIndex, b);
-        score += getSelfPlusNeighborScore(bIndex, a);
+        int score = getScoreDifference(aIndex, a, b) + getScoreDifference(bIndex, b, a);
 
         // If swapping pixels `a` and `b` would improve the image, do the swap
         if (score < 0)
@@ -443,7 +437,7 @@ public readonly partial struct SwapComputeShader : IComputeShader
         return index / width;
     }
 
-    private int getSelfPlusNeighborScore(int2 centerIndex, float4 centerPixel)
+    private int getScoreDifference(int2 centerIndex, float4 oldCenterPixel, float4 newCenterPixel)
     {
         int score = 0;
 
@@ -460,7 +454,8 @@ public readonly partial struct SwapComputeShader : IComputeShader
                 int2 neighborIndex = centerIndex + new int2(dx, dy);
                 float4 neighborPixel = readTexture[neighborIndex];
 
-                score += getColorDifference(centerPixel, neighborPixel);
+                score -= getColorDifference(oldCenterPixel, neighborPixel);
+                score += getColorDifference(newCenterPixel, neighborPixel);
             }
         }
 
