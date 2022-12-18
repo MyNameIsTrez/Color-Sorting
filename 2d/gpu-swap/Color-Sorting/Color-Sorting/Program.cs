@@ -103,7 +103,7 @@ internal class Program
 
             using var indicesBuffer = GraphicsDevice.GetDefault().AllocateReadWriteBuffer(indices.ToArray());
 
-            GraphicsDevice.GetDefault().For(pairCount, new SwapComputeShader(indicesBuffer, texture, width));
+            GraphicsDevice.GetDefault().For(pairCount, new SwapComputeShader(indicesBuffer, texture, width, height));
         }
 
         //indices.ForEach(Console.WriteLine);
@@ -420,19 +420,119 @@ public readonly partial struct SwapComputeShader : IComputeShader
 
     public readonly int width;
 
+    public readonly int height;
+
     public void Execute()
     {
-        int i = indices[ThreadIds.X * 2 + 0];
-        int j = indices[ThreadIds.X * 2 + 1];
+        int aIndex1D = indices[ThreadIds.X * 2 + 0];
+        int bIndex1D = indices[ThreadIds.X * 2 + 1];
 
-        int ix = i % width;
-        int iy = i / width;
+        int2 aIndex = new int2(getX(aIndex1D), getY(aIndex1D));
+        int2 bIndex = new int2(getX(bIndex1D), getY(bIndex1D));
 
-        int jx = j % width;
-        int jy = j / width;
+        float4 a = texture[aIndex];
+        float4 b = texture[bIndex];
 
-        float4 temp = texture[ix, iy];
-        texture[ix, iy] = texture[jx, jy];
-        texture[jx, jy] = temp;
+        int score = 0;
+
+        int change;
+
+
+        change = getSelfPlusNeighborScore(aIndex);
+        score -= change;
+        texture[aIndex] = b;
+        change = getSelfPlusNeighborScore(aIndex);
+        score += change;
+
+        change = getSelfPlusNeighborScore(bIndex);
+        score -= change;
+        texture[bIndex] = a;
+        change = getSelfPlusNeighborScore(bIndex);
+        score += change;
+
+
+        // If swapping pixels `a` and `b` worsened the image, revert the swap
+        if (score > 0)
+        {
+            texture[new int2(0, 15)] = new float4(1, 0, 0, 1);
+
+            texture[aIndex] = a;
+            texture[bIndex] = b;
+        }
+        else
+        {
+            texture[new int2(0, 15)] = new float4(0, 1, 0, 1);
+        }
+
+    }
+
+    private int getX(int index)
+    {
+        return index % width;
+    }
+
+    private int getY(int index)
+    {
+        return index / width;
+    }
+
+    private int getSelfPlusNeighborScore(int2 index)
+    {
+        int score = 0;
+        int additionalScore;
+
+        int i = 0;
+        for (int dy = -1; dy <= 1; dy++)
+        {
+            if (index.Y + dy == -1 || index.Y + dy == height)
+                continue;
+
+            for (int dx = -1; dx <= 1; dx++)
+            {
+                if (index.X + dx == -1 || index.X + dx == width)
+                    continue;
+
+                additionalScore = getScore(index + new int2(dx, dy));
+                score += additionalScore;
+                i++;
+            }
+        }
+
+        return (score);
+    }
+
+    private int getScore(int2 centerIndex)
+    {
+        float4 centerPixel = texture[centerIndex];
+        int score = 0;
+
+        int i = 0;
+        for (var dy = -1; dy <= 1; dy++)
+        {
+            if (centerIndex.Y + dy == -1 || centerIndex.Y + dy == height)
+                continue;
+
+            for (var dx = -1; dx <= 1; dx++)
+            {
+                // TODO: Is the check for itself with `(dx == 0 && dy == 0)` really necessary?
+                if (centerIndex.X + dx == -1 || centerIndex.X + dx == width || (dx == 0 && dy == 0))
+                    continue;
+
+                float4 neighborPixel = texture[centerIndex + new int2(dx, dy)];
+                score += getColorDifference(centerPixel, neighborPixel, i);
+                i++;
+            }
+        }
+
+        return score;
+    }
+
+    private int getColorDifference(float4 c1, float4 c2, int i)
+    {
+        var l = (c1.R * 255) - (c2.R * 255);
+        var a = (c1.G * 255) - (c2.G * 255);
+        var b = (c1.B * 255) - (c2.B * 255);
+
+        return (int)(l * l + a * a + b * b);
     }
 }
