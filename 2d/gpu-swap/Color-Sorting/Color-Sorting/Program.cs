@@ -336,7 +336,7 @@ public readonly partial struct SwapComputeShader : IComputeShader
     {
         int score = 0;
 
-        // Profile replacing these for- and if-statements with a top/bottom/left/right for-loop
+        /*
         for (int dy = -KERNEL_RADIUS; dy <= KERNEL_RADIUS; dy++)
         {
             if (centerIndex.Y + dy == -1 || centerIndex.Y + dy == height)
@@ -354,8 +354,83 @@ public readonly partial struct SwapComputeShader : IComputeShader
                 score += getColorDifference(newCenterPixel, neighborPixel);
             }
         }
+        */
+
+        Top(ref score, centerIndex, oldCenterPixel, newCenterPixel);
+        Bottom(ref score, centerIndex, oldCenterPixel, newCenterPixel);
+        Left(ref score, centerIndex, oldCenterPixel, newCenterPixel);
+        Right(ref score, centerIndex, oldCenterPixel, newCenterPixel);
 
         return (score);
+    }
+
+    private void Top(ref int score, int2 centerIndex, float4 oldCenterPixel, float4 newCenterPixel)
+    {
+        // Explanation:
+        // If centerIndex.Y is 1 and KERNEL_RADIUS is 2, then centerIndex.Y - KERNEL_RADIUS is -1. max(-1, 0) is 0, so ny starts at 0
+        // If centerIndex.Y is 3 and KERNEL_RADIUS is 2, then centerIndex.Y - KERNEL_RADIUS is 1. max(1, 0) is 1, so ny starts at 1
+        for (int ny = Hlsl.Max(centerIndex.Y - KERNEL_RADIUS, 0); ny < centerIndex.Y; ny++)
+        {
+            // Explanation:
+            // If centerIndex.X is 1 and KERNEL_RADIUS is 2, then centerIndex.X - KERNEL_RADIUS is -1. max(-1, 0) is 0, so nx starts at 0
+            // If centerIndex.X is 1 and KERNEL_RADIUS is 2 and width is 3, then centerIndex.X + KERNEL_RADIUS + 1 is 4. min(4, 3) is 3, so nx will stay less than 3
+            //
+            // If centerIndex.X is 3 and KERNEL_RADIUS is 2, then centerIndex.X - KERNEL_RADIUS is 1. max(1, 0) is 1, so nx starts at 1
+            // If centerIndex.X is 3 and KERNEL_RADIUS is 2 and width is 7, then centerIndex.X + KERNEL_RADIUS + 1 is 6. min(6, 7) is 6, so nx will stay less than 6
+            for (int nx = Hlsl.Max(centerIndex.X - KERNEL_RADIUS, 0); nx < Hlsl.Min(centerIndex.X + KERNEL_RADIUS + 1, width); nx++)
+            {
+                int2 neighborIndex = new int2(nx, ny);
+                float4 neighborPixel = readTexture[neighborIndex];
+
+                score -= getColorDifference(oldCenterPixel, neighborPixel);
+                score += getColorDifference(newCenterPixel, neighborPixel);
+            }
+        }
+    }
+
+    public void Bottom(ref int score, int2 centerIndex, float4 oldCenterPixel, float4 newCenterPixel)
+    {
+        // Explanation:
+        // If centerIndex.Y is 1 and KERNEL_RADIUS is 1 and height is 3, then centerIndex.Y + KERNEL_RADIUS + 1 is 3. min(3, 3) is 3, so ny will stay less than 3
+        // If centerIndex.Y is 1 and KERNEL_RADIUS is 1 and height is 2, then centerIndex.Y + KERNEL_RADIUS + 1 is 3. min(3, 2) is 2, so ny will stay less than 2
+        for (int ny = centerIndex.Y + 1; ny < Hlsl.Min(centerIndex.Y + KERNEL_RADIUS + 1, height); ny++)
+        {
+            for (int nx = Hlsl.Max(centerIndex.X - KERNEL_RADIUS, 0); nx < Hlsl.Min(centerIndex.X + KERNEL_RADIUS + 1, width); nx++)
+            {
+                int2 neighborIndex = new int2(nx, ny);
+                float4 neighborPixel = readTexture[neighborIndex];
+
+                score -= getColorDifference(oldCenterPixel, neighborPixel);
+                score += getColorDifference(newCenterPixel, neighborPixel);
+            }
+        }
+    }
+
+    public void Left(ref int score, int2 centerIndex, float4 oldCenterPixel, float4 newCenterPixel)
+    {
+        for (int nx = Hlsl.Max(centerIndex.X - KERNEL_RADIUS, 0); nx < centerIndex.X; nx++)
+        {
+            int2 neighborIndex = new int2(nx, 0);
+            float4 neighborPixel = readTexture[neighborIndex];
+
+            score -= getColorDifference(oldCenterPixel, neighborPixel);
+            score += getColorDifference(newCenterPixel, neighborPixel);
+        }
+    }
+
+    public void Right(ref int score, int2 centerIndex, float4 oldCenterPixel, float4 newCenterPixel)
+    {
+        // Explanation:
+        // If centerIndex.X is 1 and KERNEL_RADIUS is 2 and width is 3, then centerIndex.X + 1 is 2. min(2, 3 - 1) is 2, so nx starts at 2
+        // If centerIndex.X is 2 and KERNEL_RADIUS is 2 and width is 3, then centerIndex.X + 1 is 3. min(3, 3 - 1) is 2, so nx starts at 2
+        for (int nx = Hlsl.Min(centerIndex.X + 1, width - 1); nx < Hlsl.Min(centerIndex.X + KERNEL_RADIUS + 1, width); nx++)
+        {
+            int2 neighborIndex = new int2(nx, 0);
+            float4 neighborPixel = readTexture[neighborIndex];
+
+            score -= getColorDifference(oldCenterPixel, neighborPixel);
+            score += getColorDifference(newCenterPixel, neighborPixel);
+        }
     }
 
     private int getColorDifference(float4 c1, float4 c2)
