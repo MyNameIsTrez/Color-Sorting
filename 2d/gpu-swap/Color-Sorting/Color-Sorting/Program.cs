@@ -1,4 +1,4 @@
-using Colourful;
+﻿using Colourful;
 using ComputeSharp;
 using System.Diagnostics;
 using System.Drawing;
@@ -30,7 +30,7 @@ static public class Foo
 
 internal class Program
 {
-    const int ITERATIONS = 100;
+    const int ITERATIONS = 1000;
 
     //const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/new-1000.png";
     const string INPUT_IMAGE_PATH = "I:/Programming/Color-Sorting/2d/gpu-swap/Color-Sorting/Color-Sorting/big-palette.png";
@@ -92,22 +92,29 @@ internal class Program
             var a = new Stopwatch();
             a.Start();
             indicesList.Shuffle();
-
-            // TODO: Try turning indicesList into indicesArray
-            indicesBuffer.CopyFrom(indicesList.ToArray());
-
             a.Stop();
-            Console.WriteLine("{0} ticks shuffle", a.ElapsedTicks);
-
-            readTexture.CopyFrom(pixels);
+            Console.WriteLine("\n{0} ticks shuffle", a.ElapsedTicks);
 
             var b = new Stopwatch();
             b.Start();
+            // TODO: Try turning indicesList into indicesArray
+            indicesBuffer.CopyFrom(indicesList.ToArray());
+            b.Stop();
+            Console.WriteLine("{0} ticks copy indicesList", b.ElapsedTicks);
+
+            var c = new Stopwatch();
+            c.Start();
+            readTexture.CopyFrom(pixels);
+            c.Stop();
+            Console.WriteLine("{0} ticks copy pixels", c.ElapsedTicks);
+
+            var d = new Stopwatch();
+            d.Start();
             GraphicsDevice.GetDefault().For(pairCount, new SwapComputeShader(indicesBuffer, readTexture, writeTexture, width, height));
 
             writeTexture.CopyTo(pixels);
-            b.Stop();
-            Console.WriteLine("{0} ticks shader", b.ElapsedTicks);
+            d.Stop();
+            Console.WriteLine("{0} ticks shader", d.ElapsedTicks);
 
             //c.Stop();
             //Console.WriteLine("{0} milliseconds per iteration", c.ElapsedMilliseconds);
