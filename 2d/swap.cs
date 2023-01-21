@@ -21,36 +21,39 @@ using System.IO;
 
 class Program
 {
-    // algorithm settings, feel free to mess with these
-	const string INPUT_IMAGE_PATH = "palette.bmp";
-    const int WIDTH = 16;
-    const int HEIGHT = 16;
-    const bool AVERAGE = true;
+	//const string INPUT_IMAGE_PATH = "palette.bmp";
+	//const int WIDTH = 16;
+	//const int HEIGHT = 16;
+
+	const string INPUT_IMAGE_PATH = "shouldnt-swap.png";
+	const int WIDTH = 4;
+	const int HEIGHT = 16;
+
 	const string OUTPUT_DIRECTORY_NAME = "swap-output";
 	const double COOLING_RATE = 0.99999;
 
-    const int STARTX = WIDTH/2;
-    const int STARTY = HEIGHT/2;
+	const int STARTX = WIDTH / 2;
+	const int STARTY = HEIGHT / 2;
 
-    // represent a coordinate
-    struct XY
-    {
-        public int x, y;
-        public XY(int x, int y)
-        {
-            this.x = x;
-            this.y = y;
-        }
-        public override int GetHashCode()
-        {
-            return x ^ y;
-        }
-        public override bool Equals(object obj)
-        {
-            var that = (XY)obj;
-            return this.x == that.x && this.y == that.y;
-        }
-    }
+	// represent a coordinate
+	struct XY
+	{
+		public int x, y;
+		public XY(int x, int y)
+		{
+			this.x = x;
+			this.y = y;
+		}
+		public override int GetHashCode()
+		{
+			return x ^ y;
+		}
+		public override bool Equals(object obj)
+		{
+			var that = (XY)obj;
+			return this.x == that.x && this.y == that.y;
+		}
+	}
 
 	/// <summary>
 	/// Structure to define CIE L*a*b*.
@@ -71,11 +74,13 @@ class Program
 		private static short StateKnownColorValid = 0x0001;
 		// private readonly short state;
 		public readonly short state;
-		public bool IsEmpty {
-            get {
-                return state == 0;
-            }
-        }
+		public bool IsEmpty
+		{
+			get
+			{
+				return state == 0;
+			}
+		}
 
 		public static bool operator ==(CIELab item1, CIELab item2)
 		{
@@ -151,7 +156,7 @@ class Program
 
 		public override bool Equals(Object obj)
 		{
-			if(obj==null || GetType()!=obj.GetType()) return false;
+			if (obj == null || GetType() != obj.GetType()) return false;
 
 			return (this == (CIELab)obj);
 		}
@@ -211,7 +216,7 @@ class Program
 			}
 			set
 			{
-				this.x = (value>0.9505)? 0.9505 : ((value<0)? 0 : value);
+				this.x = (value > 0.9505) ? 0.9505 : ((value < 0) ? 0 : value);
 			}
 		}
 
@@ -226,7 +231,7 @@ class Program
 			}
 			set
 			{
-				this.y = (value>1.0)? 1.0 : ((value<0)?0 : value);
+				this.y = (value > 1.0) ? 1.0 : ((value < 0) ? 0 : value);
 			}
 		}
 
@@ -241,20 +246,20 @@ class Program
 			}
 			set
 			{
-				this.z = (value>1.089)? 1.089 : ((value<0)? 0 : value);
+				this.z = (value > 1.089) ? 1.089 : ((value < 0) ? 0 : value);
 			}
 		}
 
 		public CIEXYZ(double x, double y, double z)
 		{
-			this.x = (x>0.9505)? 0.9505 : ((x<0)? 0 : x);
-			this.y = (y>1.0)? 1.0 : ((y<0)? 0 : y);
-			this.z = (z>1.089)? 1.089 : ((z<0)? 0 : z);
+			this.x = (x > 0.9505) ? 0.9505 : ((x < 0) ? 0 : x);
+			this.y = (y > 1.0) ? 1.0 : ((y < 0) ? 0 : y);
+			this.z = (z > 1.089) ? 1.089 : ((z < 0) ? 0 : z);
 		}
 
 		public override bool Equals(Object obj)
 		{
-			if(obj==null || GetType()!=obj.GetType()) return false;
+			if (obj == null || GetType() != obj.GetType()) return false;
 
 			return (this == (CIEXYZ)obj);
 		}
@@ -309,7 +314,7 @@ class Program
 			}
 			set
 			{
-					red = (value>255)? 255 : ((value<0)?0 : value);
+				red = (value > 255) ? 255 : ((value < 0) ? 0 : value);
 			}
 		}
 
@@ -324,7 +329,7 @@ class Program
 			}
 			set
 			{
-				green = (value>255)? 255 : ((value<0)?0 : value);
+				green = (value > 255) ? 255 : ((value < 0) ? 0 : value);
 			}
 		}
 
@@ -339,20 +344,20 @@ class Program
 			}
 			set
 			{
-				blue = (value>255)? 255 : ((value<0)?0 : value);
+				blue = (value > 255) ? 255 : ((value < 0) ? 0 : value);
 			}
 		}
 
 		public RGB(int R, int G, int B)
 		{
-			this.red = (R>255)? 255 : ((R<0)?0 : R);
-			this.green = (G>255)? 255 : ((G<0)?0 : G);
-			this.blue = (B>255)? 255 : ((B<0)?0 : B);
+			this.red = (R > 255) ? 255 : ((R < 0) ? 0 : R);
+			this.green = (G > 255) ? 255 : ((G < 0) ? 0 : G);
+			this.blue = (B > 255) ? 255 : ((B < 0) ? 0 : B);
 		}
 
 		public override bool Equals(Object obj)
 		{
-			if(obj==null || GetType()!=obj.GetType()) return false;
+			if (obj == null || GetType() != obj.GetType()) return false;
 
 			return (this == (RGB)obj);
 		}
@@ -368,7 +373,7 @@ class Program
 	/// </summary>
 	private static double Fxyz(double t)
 	{
-		return ((t > 0.008856)? Math.Pow(t, (1.0/3.0)) : (7.787*t + 16.0/116.0));
+		return ((t > 0.008856) ? Math.Pow(t, (1.0 / 3.0)) : (7.787 * t + 16.0 / 116.0));
 	}
 
 	/// <summary>
@@ -376,9 +381,9 @@ class Program
 	/// </summary>
 	public static CIELab XYZtoLab(double x, double y, double z)
 	{
-		var L = 116.0 * Fxyz( y/CIEXYZ.D65.Y ) -16;
-		var A = 500.0 * (Fxyz( x/CIEXYZ.D65.X ) - Fxyz( y/CIEXYZ.D65.Y) );
-		var B = 200.0 * (Fxyz( y/CIEXYZ.D65.Y ) - Fxyz( z/CIEXYZ.D65.Z) );
+		var L = 116.0 * Fxyz(y / CIEXYZ.D65.Y) - 16;
+		var A = 500.0 * (Fxyz(x / CIEXYZ.D65.X) - Fxyz(y / CIEXYZ.D65.Y));
+		var B = 200.0 * (Fxyz(y / CIEXYZ.D65.Y) - Fxyz(z / CIEXYZ.D65.Z));
 
 		CIELab lab = new CIELab(L, A, B);
 
@@ -391,23 +396,23 @@ class Program
 	public static CIEXYZ RGBtoXYZ(int red, int green, int blue)
 	{
 		// normalize red, green, blue values
-		double rLinear = (double)red/255.0;
-		double gLinear = (double)green/255.0;
-		double bLinear = (double)blue/255.0;
+		double rLinear = (double)red / 255.0;
+		double gLinear = (double)green / 255.0;
+		double bLinear = (double)blue / 255.0;
 
 		// convert to a sRGB form
-		double r = (rLinear > 0.04045)? Math.Pow((rLinear + 0.055)/(
-			1 + 0.055), 2.2) : (rLinear/12.92) ;
-		double g = (gLinear > 0.04045)? Math.Pow((gLinear + 0.055)/(
-			1 + 0.055), 2.2) : (gLinear/12.92) ;
-		double b = (bLinear > 0.04045)? Math.Pow((bLinear + 0.055)/(
-			1 + 0.055), 2.2) : (bLinear/12.92) ;
+		double r = (rLinear > 0.04045) ? Math.Pow((rLinear + 0.055) / (
+			1 + 0.055), 2.2) : (rLinear / 12.92);
+		double g = (gLinear > 0.04045) ? Math.Pow((gLinear + 0.055) / (
+			1 + 0.055), 2.2) : (gLinear / 12.92);
+		double b = (bLinear > 0.04045) ? Math.Pow((bLinear + 0.055) / (
+			1 + 0.055), 2.2) : (bLinear / 12.92);
 
 		// converts
 		return new CIEXYZ(
-			(r*0.4124 + g*0.3576 + b*0.1805),
-			(r*0.2126 + g*0.7152 + b*0.0722),
-			(r*0.0193 + g*0.1192 + b*0.9505)
+			(r * 0.4124 + g * 0.3576 + b * 0.1805),
+			(r * 0.2126 + g * 0.7152 + b * 0.0722),
+			(r * 0.0193 + g * 0.1192 + b * 0.9505)
 			);
 	}
 
@@ -417,23 +422,23 @@ class Program
 	public static RGB XYZtoRGB(double x, double y, double z)
 	{
 		double[] Clinear = new double[3];
-		Clinear[0] = x*3.2410 - y*1.5374 - z*0.4986; // red
-		Clinear[1] = -x*0.9692 + y*1.8760 - z*0.0416; // green
-		Clinear[2] = x*0.0556 - y*0.2040 + z*1.0570; // blue
+		Clinear[0] = x * 3.2410 - y * 1.5374 - z * 0.4986; // red
+		Clinear[1] = -x * 0.9692 + y * 1.8760 - z * 0.0416; // green
+		Clinear[2] = x * 0.0556 - y * 0.2040 + z * 1.0570; // blue
 
-		for(int i=0; i<3; i++)
+		for (int i = 0; i < 3; i++)
 		{
-			Clinear[i] = (Clinear[i]<=0.0031308)? 12.92*Clinear[i] : (
-				1+0.055)* Math.Pow(Clinear[i], (1.0/2.4)) - 0.055;
+			Clinear[i] = (Clinear[i] <= 0.0031308) ? 12.92 * Clinear[i] : (
+				1 + 0.055) * Math.Pow(Clinear[i], (1.0 / 2.4)) - 0.055;
 		}
 
 		return new RGB(
-			Convert.ToInt32( Double.Parse(String.Format("{0:0.00}",
-				Clinear[0]*255.0)) ),
-			Convert.ToInt32( Double.Parse(String.Format("{0:0.00}",
-				Clinear[1]*255.0)) ),
-			Convert.ToInt32( Double.Parse(String.Format("{0:0.00}",
-				Clinear[2]*255.0)) )
+			Convert.ToInt32(Double.Parse(String.Format("{0:0.00}",
+				Clinear[0] * 255.0))),
+			Convert.ToInt32(Double.Parse(String.Format("{0:0.00}",
+				Clinear[1] * 255.0))),
+			Convert.ToInt32(Double.Parse(String.Format("{0:0.00}",
+				Clinear[2] * 255.0)))
 			);
 	}
 
@@ -442,19 +447,19 @@ class Program
 	/// </summary>
 	public static CIEXYZ LabtoXYZ(double l, double a, double b)
 	{
-		double delta = 6.0/29.0;
+		double delta = 6.0 / 29.0;
 
-		double fy = (l+16)/116.0;
-		double fx = fy + (a/500.0);
-		double fz = fy - (b/200.0);
+		double fy = (l + 16) / 116.0;
+		double fx = fy + (a / 500.0);
+		double fz = fy - (b / 200.0);
 
 		return new CIEXYZ(
-			(fx > delta)? CIEXYZ.D65.X * (fx*fx*fx) : (fx - 16.0/116.0)*3*(
-				delta*delta)*CIEXYZ.D65.X,
-			(fy > delta)? CIEXYZ.D65.Y * (fy*fy*fy) : (fy - 16.0/116.0)*3*(
-				delta*delta)*CIEXYZ.D65.Y,
-			(fz > delta)? CIEXYZ.D65.Z * (fz*fz*fz) : (fz - 16.0/116.0)*3*(
-				delta*delta)*CIEXYZ.D65.Z
+			(fx > delta) ? CIEXYZ.D65.X * (fx * fx * fx) : (fx - 16.0 / 116.0) * 3 * (
+				delta * delta) * CIEXYZ.D65.X,
+			(fy > delta) ? CIEXYZ.D65.Y * (fy * fy * fy) : (fy - 16.0 / 116.0) * 3 * (
+				delta * delta) * CIEXYZ.D65.Y,
+			(fz > delta) ? CIEXYZ.D65.Z * (fz * fz * fz) : (fz - 16.0 / 116.0) * 3 * (
+				delta * delta) * CIEXYZ.D65.Z
 			);
 	}
 
@@ -464,7 +469,7 @@ class Program
 	public static RGB LabtoRGB(double l, double a, double b)
 	{
 		var xyz = LabtoXYZ(l, a, b);
-		return XYZtoRGB( xyz.X, xyz.Y, xyz.Z );
+		return XYZtoRGB(xyz.X, xyz.Y, xyz.Z);
 	}
 
 	/// <summary>
@@ -473,56 +478,54 @@ class Program
 	public static CIELab RGBtoLab(int red, int green, int blue)
 	{
 		var xyz = RGBtoXYZ(red, green, blue);
-		return XYZtoLab( xyz.X, xyz.Y, xyz.Z );
+		return XYZtoLab(xyz.X, xyz.Y, xyz.Z);
 	}
 
-    static int coldiff(CIELab c1, CIELab c2)
-    {
-        var l2 = (c1.L - c2.L);
-        var a2 = (c1.A - c2.A);
-        var b2 = (c1.B - c2.B);
-        return (int)(l2 * l2 + a2 * a2 + b2 * b2);
-    }
+	static int coldiff(CIELab c1, CIELab c2)
+	{
+		var l2 = (c1.L - c2.L);
+		var a2 = (c1.A - c2.A);
+		var b2 = (c1.B - c2.B);
+		Console.WriteLine("c1.L: {0}", c1.L);
+		Console.WriteLine("c2.L: {0}", c2.L);
+		return (int)(l2 * l2 + a2 * a2 + b2 * b2);
+	}
 
-    // gets the neighbors (3..8) of the given coordinate
-    static List<XY> getneighbors(int index)
-    {
+	// gets the neighbors (3..8) of the given coordinate
+	static List<XY> getneighbors(int index)
+	{
 		XY xy = new XY(get_x_from_index(index), get_y_from_index(index));
 
-        var ret = new List<XY>(8);
-        for (var dy = -1; dy <= 1; dy++)
-        {
-            if (xy.y + dy == -1 || xy.y + dy == HEIGHT)
-                continue;
-            for (var dx = -1; dx <= 1; dx++)
-            {
-                if (xy.x + dx == -1 || xy.x + dx == WIDTH || (xy.x + dx == 0 && xy.y + dy == 0))
-                    continue;
-                ret.Add(new XY(xy.x + dx, xy.y + dy));
-            }
-        }
-        return ret;
-    }
+		var ret = new List<XY>(8);
+		for (var dy = -1; dy <= 1; dy++)
+		{
+			if (xy.y + dy == -1 || xy.y + dy == HEIGHT)
+				continue;
+			for (var dx = -1; dx <= 1; dx++)
+			{
+				// TODO: Is the check for itself with `(dx == 0 && dy == 0)` really necessary?
+				if (xy.x + dx == -1 || xy.x + dx == WIDTH || (dx == 0 && dy == 0))
+					continue;
+				ret.Add(new XY(xy.x + dx, xy.y + dy));
+			}
+		}
+		return ret;
+	}
 
-    // calculates how well a color fits at the given coordinates
-    static int get_score(List<CIELab> pixels, int index)
-    {
+	// calculates how well a color fits at the given coordinates
+	static int get_score(List<CIELab> pixels, int index)
+	{
 		CIELab c = pixels[index];
-        // get the diffs for each neighbor separately
-        var diffs = new List<int>(8);
-        foreach (var nxy in getneighbors(index))
-        {
-            var nc = pixels[nxy.x + nxy.y * WIDTH];
-            if (!nc.IsEmpty)
-                diffs.Add(coldiff(nc, c));
-        }
+		// get the diffs for each neighbor separately
+		int score = 0;
+		foreach (var nxy in getneighbors(index))
+		{
+			var nc = pixels[nxy.x + nxy.y * WIDTH];
+			score += coldiff(nc, c);
+		}
 
-        // average or minimum selection
-        if (AVERAGE)
-            return (int)diffs.Average();
-        else
-            return diffs.Min();
-    }
+		return score;
+	}
 
 	// TODO: Maybe adding "ref" in front of List<CIELab> is an optimization?
 	static int get_total_score(List<CIELab> pixels)
@@ -561,6 +564,7 @@ class Program
 	{
 		var score = 0;
 		var xy = new XY(get_x_from_index(index), get_y_from_index(index));
+		int i = 0;
 		for (var dy = -1; dy <= 1; dy++)
 		{
 			if (xy.y + dy == -1 || xy.y + dy == HEIGHT)
@@ -570,6 +574,8 @@ class Program
 				if (xy.x + dx == -1 || xy.x + dx == WIDTH)
 					continue;
 				score += get_score(pixels, xy.x + dx + (xy.y + dy) * WIDTH);
+				Console.WriteLine("score {0}: {1}", i, score);
+				i++;
 			}
 		}
 		return (score);
@@ -596,8 +602,8 @@ class Program
 		img.SetPixel(get_x_from_index(index), get_y_from_index(index), color);
 	}
 
-    static void Main(string[] args)
-    {
+	static void Main(string[] args)
+	{
 		var rnd = new Random();
 
 		var pixels = new List<CIELab>();
@@ -606,14 +612,15 @@ class Program
 		{
 			for (int x = 0; x < palette.Width; x++)
 			{
-				Color pixel = palette.GetPixel(x,y);
+				Color pixel = palette.GetPixel(x, y);
 				CIELab lab = RGBtoLab(pixel.R, pixel.G, pixel.B);
 				pixels.Add(lab);
 			}
 		}
 
-		pixels.Sort(new Comparison<CIELab>((c1, c2) => rnd.Next(3) - 1));
+		// pixels.Sort(new Comparison<CIELab>((c1, c2) => rnd.Next(3) - 1));
 
+		// TODO: Why not just replace every mention of `img` with `palette` instead?
 		var img = new Bitmap(WIDTH, HEIGHT, PixelFormat.Format24bppRgb);
 		for (var y = 0; y < HEIGHT; y++)
 		{
@@ -635,47 +642,59 @@ class Program
 		var starting_time = DateTimeOffset.Now.ToUnixTimeSeconds();
 		var score = get_total_score(pixels);
 
-		while (true)
+		// while (true)
+		// {
+		// 	int index_1 = rnd.Next(WIDTH * HEIGHT);
+		// 	int index_2;
+		// 	do
+		// 	{
+		// 		index_2 = rnd.Next(WIDTH * HEIGHT);
+		// 	} while (index_1 == index_2);
+
+		int index_1 = 1;
+		int index_2 = 2;
+
+		var old_score = score;
+
+		var old_index_1_pixel = pixels[index_1];
+		var old_index_2_pixel = pixels[index_2];
+
+		var scoreDiff = 0;
+
+		scoreDiff -= get_self_plus_neighbor_score(pixels, index_1);
+
+		/*
+		Console.WriteLine("Score diff {0}", scoreDiff);
+		pixels[index_1] = old_index_2_pixel;
+		scoreDiff += get_self_plus_neighbor_score(pixels, index_1);
+
+		scoreDiff -= get_self_plus_neighbor_score(pixels, index_2);
+		pixels[index_2] = old_index_1_pixel;
+		scoreDiff += get_self_plus_neighbor_score(pixels, index_2);
+
+		// Console.WriteLine("Score diff {0}", scoreDiff);
+		if (scoreDiff < 0)
 		{
-			int index_1 = rnd.Next(WIDTH * HEIGHT);
-			int index_2;
-			do {
-				index_2 = rnd.Next(WIDTH * HEIGHT);
-			} while (index_1 == index_2);
+			score += scoreDiff;
 
-			var old_score = score;
+			lowest_score = score;
+			Console.WriteLine("Score {0}, Image {1}, Loop {2}, Seconds {3}", score, imgs_saved, loops, DateTimeOffset.Now.ToUnixTimeSeconds() - starting_time);
 
-			var old_index_1_pixel = pixels[index_1];
-			var old_index_2_pixel = pixels[index_2];
+			set_img_pixel(img, pixels, index_1);
+			set_img_pixel(img, pixels, index_2);
 
-			score -= get_self_plus_neighbor_score(pixels, index_1);
-			pixels[index_1] = old_index_2_pixel;
-			score += get_self_plus_neighbor_score(pixels, index_1);
+			imgs_saved++;
 
-			score -= get_self_plus_neighbor_score(pixels, index_2);
-			pixels[index_2] = old_index_1_pixel;
-			score += get_self_plus_neighbor_score(pixels, index_2);
-
-			if (score < lowest_score)
-			{
-				lowest_score = score;
-				Console.WriteLine("Score {0}, Image {1}, Loop {2}, Seconds {3}", score, imgs_saved, loops, DateTimeOffset.Now.ToUnixTimeSeconds() - starting_time);
-
-				set_img_pixel(img, pixels, index_1);
-				set_img_pixel(img, pixels, index_2);
-
-				imgs_saved++;
-
-				img.Save(String.Format("{0}/{1}.png", OUTPUT_DIRECTORY_NAME, imgs_saved));
-			}
-			else
-			{
-				pixels[index_1] = old_index_1_pixel;
-				pixels[index_2] = old_index_2_pixel;
-				score = old_score;
-			}
-
-			loops++;
+			img.Save(String.Format("{0}/{1}.png", OUTPUT_DIRECTORY_NAME, imgs_saved));
 		}
-    }
+		else
+		{
+			pixels[index_1] = old_index_1_pixel;
+			pixels[index_2] = old_index_2_pixel;
+		}
+
+		loops++;
+		// }
+		*/
+	}
 }
