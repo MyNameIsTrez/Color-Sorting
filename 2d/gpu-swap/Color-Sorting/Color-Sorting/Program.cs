@@ -58,7 +58,7 @@ static public class ShuffleExtension
 
 internal class Program
 {
-    const int ITERATIONS = 100;
+    const int ITERATIONS = 5;
 
     // WARNING: The max KERNEL_RADIUS value that should ever be used is 7!
     // TODO: Actually test whether what happens when the value is set higher
@@ -162,6 +162,7 @@ internal class Program
 
             var clearChangeWriteTextureStopWatch = new Stopwatch();
             clearChangeWriteTextureStopWatch.Start();
+            // TODO: This is really slow for some reason, so try bzero'ing it instead
             changeWriteTexture.CopyFrom(emptyChangeWriteArray);
             clearChangeWriteTextureStopWatch.Stop();
             Console.WriteLine("{0} ticks clearing changeWriteTexture", clearChangeWriteTextureStopWatch.ElapsedTicks);
@@ -318,7 +319,6 @@ internal class Program
             minA = double.MaxValue;
             minB = double.MaxValue;
 
-            // TODO: Change this back to 256!!!
             for (double r = 0; r < 256; ++r)
             {
                 Console.Write(String.Format("\rCalculating Lab min, max and range. The result will be saved to a file. Progress: {0}/255", r));
@@ -455,7 +455,7 @@ internal class Program
             }
         }
 
-        //Console.WriteLine("Changes {0}%", (double)i / (width * height) * 100);
+        Console.WriteLine("Changes {0}%", (double)i / (width * height) * 100);
 
         //Console.Write("\n");
 
@@ -532,10 +532,11 @@ public readonly partial struct SwapComputeShader : IComputeShader
     {
         // TODO: Probably need to have a separate neighborTotals read and write texture!
 
-        int neighborCount;
+        //int neighborCount;
 
-        int kernelSideLength = KERNEL_RADIUS + 1 + KERNEL_RADIUS;
+        //int kernelSideLength = KERNEL_RADIUS + 1 + KERNEL_RADIUS;
 
+        /*
         // If centerIndex is a corner
         if ((centerIndex.X == 0 && centerIndex.Y == 0)
          || (centerIndex.X == width - 1 && centerIndex.Y == 0)
@@ -555,6 +556,15 @@ public readonly partial struct SwapComputeShader : IComputeShader
         {
             neighborCount = kernelSideLength * kernelSideLength - 1;
         }
+        */
+
+        int up = Hlsl.Min(centerIndex.Y, KERNEL_RADIUS);
+        int down = Hlsl.Min(height - 1 - centerIndex.Y, KERNEL_RADIUS);
+
+        int left = Hlsl.Min(centerIndex.X, KERNEL_RADIUS);
+        int right = Hlsl.Min(width - 1 - centerIndex.X, KERNEL_RADIUS);
+
+        int neighborCount = (up + 1 + down) * (left + 1 + right) - 1;
 
         float4 neighborsAverage = neighborTotalsReadTexture[centerIndex] * 65535 / neighborCount;
         //float neighborsAverageR = neighborTotalsReadTexture[centerIndex].R * 65535 / neighborCount;
